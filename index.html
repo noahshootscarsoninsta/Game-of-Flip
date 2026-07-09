@@ -98,12 +98,20 @@
   .screen.active{ display:flex; }
   @keyframes fadein{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);} }
 
+  .mfx-mark{
+    text-align:center;
+    font-size:13px;
+    font-weight:800;
+    letter-spacing:5px;
+    color:var(--muted);
+    margin:36px 0 0;
+  }
   .logo{
     font-size:64px;
     font-weight:900;
     letter-spacing:6px;
     text-align:center;
-    margin:40px 0 4px;
+    margin:6px 0 4px;
     background:linear-gradient(135deg, var(--accent), var(--accent2));
     -webkit-background-clip:text;
     background-clip:text;
@@ -448,6 +456,35 @@
   .chain-list-item.done{ color:var(--muted); }
   .chain-list-item.current{ color:var(--accent); font-weight:800; }
 
+  /* Wheel Spin Mode */
+  .wheel-reel-list{ margin:14px 0 6px; }
+  .wheel-reel{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    background:var(--card);
+    border:1px solid var(--border-soft);
+    border-radius:14px;
+    padding:14px 16px;
+    margin-bottom:10px;
+  }
+  .wheel-reel-label{
+    font-size:12px;
+    color:var(--muted);
+    text-transform:uppercase;
+    letter-spacing:1px;
+    font-weight:700;
+    flex-shrink:0;
+  }
+  .wheel-reel-value{
+    font-size:16px;
+    font-weight:800;
+    text-align:right;
+  }
+  .wheel-reel-value.spinning{ color:var(--accent2); animation:wheelPulse .12s linear infinite alternate; }
+  @keyframes wheelPulse{ from{opacity:.5;} to{opacity:1;} }
+
   .ta-stats-row{
     display:flex;
     gap:12px;
@@ -520,9 +557,17 @@
     </div>
     <div class="spacer"></div>
 
+    <div class="mfx-mark">MFX</div>
     <div class="logo">F.L.I.P</div>
     <div class="tagline">Land it, or spell it.</div>
+    <div id="resume-game-wrap" style="display:none;">
+      <button class="btn" style="border-color:var(--accent);" onclick="resumeGame()">▶️ Resume Game
+        <span class="desc" id="resume-game-desc">—</span>
+      </button>
+    </div>
     <button class="btn btn-primary" onclick="go('screen-gametype')">Play</button>
+    <button class="btn btn-outline" onclick="openQuickTrick()">🎲 Quick Trick</button>
+    <button class="btn btn-outline" onclick="openWheelSpin()">🎡 Wheel Spin Mode</button>
     <div class="home-stats" id="home-stats" onclick="openSettings('screen-title')"></div>
     <div class="spacer"></div>
     <div class="placeholder-note">Trampoline &amp; ground flip tricks · Novice / Beginner / Intermediate</div>
@@ -630,7 +675,10 @@
   <!-- GAME -->
   <div class="screen" id="screen-game">
     <div class="top-nav">
-      <button class="back" onclick="confirmQuit()">✕ Quit</button>
+      <div style="display:flex; gap:6px; align-items:center;">
+        <button class="back" onclick="confirmQuit()">✕ Quit</button>
+        <button class="icon-btn" style="width:36px;height:36px;font-size:15px;" onclick="saveAndExit()" aria-label="Save and exit" title="Save &amp; exit">💾</button>
+      </div>
       <span class="badge" id="game-badge">GROUND · NOVICE</span>
       <button class="icon-btn" style="width:36px;height:36px;font-size:15px;" onclick="openSettings('screen-game')" aria-label="Settings">⚙️</button>
     </div>
@@ -654,7 +702,10 @@
   <!-- ADD-ON GAME -->
   <div class="screen" id="screen-addon-game">
     <div class="top-nav">
-      <button class="back" onclick="confirmQuit()">✕ Quit</button>
+      <div style="display:flex; gap:6px; align-items:center;">
+        <button class="back" onclick="confirmQuit()">✕ Quit</button>
+        <button class="icon-btn" style="width:36px;height:36px;font-size:15px;" onclick="saveAndExit()" aria-label="Save and exit" title="Save &amp; exit">💾</button>
+      </div>
       <span class="badge" id="addon-game-badge">GROUND · NOVICE</span>
       <button class="icon-btn" style="width:36px;height:36px;font-size:15px;" onclick="openSettings('screen-addon-game')" aria-label="Settings">⚙️</button>
     </div>
@@ -682,7 +733,10 @@
   <!-- TIME ATTACK GAME -->
   <div class="screen" id="screen-timeattack-game">
     <div class="top-nav">
-      <button class="back" onclick="confirmQuit()">✕ Quit</button>
+      <div style="display:flex; gap:6px; align-items:center;">
+        <button class="back" onclick="confirmQuit()">✕ Quit</button>
+        <button class="icon-btn" style="width:36px;height:36px;font-size:15px;" onclick="saveAndExit()" aria-label="Save and exit" title="Save &amp; exit">💾</button>
+      </div>
       <span class="badge" id="ta-game-badge">GROUND · NOVICE</span>
       <button class="icon-btn" style="width:36px;height:36px;font-size:15px;" onclick="openSettings('screen-timeattack-game')" aria-label="Settings">⚙️</button>
     </div>
@@ -768,6 +822,119 @@
     <button class="btn btn-primary" onclick="restartSameSettings()">🔁 Restart</button>
     <button class="btn btn-outline" onclick="go('screen-title')">🏠 Home Page</button>
     <div class="spacer"></div>
+  </div>
+
+  <!-- QUICK TRICK -->
+  <div class="screen" id="screen-quicktrick">
+    <div class="top-nav">
+      <button class="back" onclick="go('screen-title')">← Back</button>
+      <span class="badge">QUICK TRICK</span>
+      <button class="icon-btn" style="width:36px;height:36px;font-size:15px;" onclick="openSettings('screen-quicktrick')" aria-label="Settings">⚙️</button>
+    </div>
+    <h2 class="title">Quick Trick</h2>
+    <p class="subtitle">Filter the pool, then draw one random trick.</p>
+
+    <div class="section-label">Where</div>
+    <div class="theme-toggle">
+      <button class="qt-cat-btn" data-cat="ground" onclick="toggleQtCat('ground')">🤸 Ground</button>
+      <button class="qt-cat-btn" data-cat="trampoline" onclick="toggleQtCat('trampoline')">🔵 Tramp</button>
+    </div>
+
+    <div class="section-label">Difficulty</div>
+    <div class="theme-toggle">
+      <button class="qt-diff-btn" data-diff="novice" onclick="toggleQtDiff('novice')">Novice</button>
+      <button class="qt-diff-btn" data-diff="beginner" onclick="toggleQtDiff('beginner')">Beginner</button>
+      <button class="qt-diff-btn" data-diff="intermediate" onclick="toggleQtDiff('intermediate')">Intermediate</button>
+    </div>
+
+    <div class="section-label">Rules</div>
+    <div class="switch-row">
+      <div>
+        <div class="label">No doubles</div>
+        <div class="sub">Skip Double / Triple tricks.</div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="qt-no-doubles" onchange="toggleQtFlag('noDoubles', this)">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="switch-row">
+      <div>
+        <div class="label">No twisting over full</div>
+        <div class="sub">Caps twists at one full (360°).</div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="qt-no-twist" onchange="toggleQtFlag('noTwistOverFull', this)">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="switch-row">
+      <div>
+        <div class="label">No wall tricks</div>
+        <div class="sub">Skips tricks that use a wall.</div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="qt-no-wall" onchange="toggleQtFlag('noWallTricks', this)">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="switch-row">
+      <div>
+        <div class="label">No repeats</div>
+        <div class="sub">Won't draw the same trick twice in a row.</div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="qt-no-repeats" onchange="toggleQtFlag('noRepeats', this)">
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <div class="trick-card">
+      <div class="trick-name" id="qt-trick-name">Tap Draw to get a trick</div>
+      <div class="trick-meta" id="qt-trick-meta">—</div>
+    </div>
+    <div class="placeholder-note" id="qt-pool-count" style="margin-top:0;">—</div>
+
+    <div class="spacer"></div>
+    <button class="btn btn-primary" onclick="drawQuickTrick()">🎲 Draw a Trick</button>
+  </div>
+
+  <!-- WHEEL SPIN MODE -->
+  <div class="screen" id="screen-wheel">
+    <div class="top-nav">
+      <button class="back" onclick="go('screen-title')">← Back</button>
+      <span class="badge">WHEEL SPIN</span>
+      <button class="icon-btn" style="width:36px;height:36px;font-size:15px;" onclick="openSettings('screen-wheel')" aria-label="Settings">⚙️</button>
+    </div>
+    <h2 class="title">Wheel Spin Mode</h2>
+    <p class="subtitle">Spin for who, what trick, how hard, and the twist.</p>
+
+    <div class="section-label">Players in this session</div>
+    <div id="wheel-player-fields"></div>
+    <div class="add-player" onclick="addWheelPlayerField()">+ Add player</div>
+
+    <div class="wheel-reel-list">
+      <div class="wheel-reel">
+        <div class="wheel-reel-label">Player</div>
+        <div class="wheel-reel-value" id="wheel-val-player">—</div>
+      </div>
+      <div class="wheel-reel">
+        <div class="wheel-reel-label">Trick</div>
+        <div class="wheel-reel-value" id="wheel-val-trick">—</div>
+      </div>
+      <div class="wheel-reel">
+        <div class="wheel-reel-label">Difficulty</div>
+        <div class="wheel-reel-value" id="wheel-val-difficulty">—</div>
+      </div>
+      <div class="wheel-reel">
+        <div class="wheel-reel-label">Challenge</div>
+        <div class="wheel-reel-value" id="wheel-val-challenge">—</div>
+      </div>
+    </div>
+    <div class="placeholder-note" style="margin-top:0;">Trick wheel respects your Quick Trick filters.</div>
+
+    <div class="spacer"></div>
+    <button class="btn btn-primary" id="wheel-spin-btn" onclick="spinWheel()">🎡 Spin</button>
   </div>
 
   <!-- SETTINGS -->
@@ -856,16 +1023,21 @@ const TRICKS = {
       "Front Roll", "Dive Roll", "360 Dive Roll", "Cartwheel", "Cartwheel (Opposite Side)",
       "One-Hand Cartwheel", "One-Hand Cartwheel (Opposite Hand)", "Roundoff", "Front Handspring",
       "Front Handspring Step-Out", "Back Handspring", "Back Handspring Step-Out", "Lazy Vault",
-      "Speed Vault", "Safety Vault", "Dash Vault", "Kong", "Pop Vault"
+      "Speed Vault", "Safety Vault", "Dash Vault", "Kong", "Pop Vault",
+      "Roundoff + Back Handspring", "Cartwheel + Roundoff", "Front Handspring + Back Handspring",
+      "Dive Roll + Front Roll"
     ],
     beginner: [
       "Front Flip", "Backflip", "Side Flip", "Webster", "No-Hand Front Flip", "Palm Flip",
       "Wall Flip", "Gainer", "Cheat Gainer", "Aerial", "Front Layout", "Back Layout",
-      "Running Front Flip", "Standing Backflip", "Standing Side Flip", "Running Side Flip"
+      "Running Front Flip", "Standing Backflip", "Standing Side Flip", "Running Side Flip",
+      "Back Handspring + Backflip", "Roundoff + Front Flip", "Gainer + Cheat Gainer"
     ],
     intermediate: [
       "Arabian", "Cart Arabian", "Scoot Arabian", "Back Full", "Cart Full", "Scoot Full",
-      "Cork", "Scoot Cork", "Standing Arabian", "Standing Back Full"
+      "Cork", "Scoot Cork", "Standing Arabian", "Standing Back Full",
+      "Back Full + Backflip", "Arabian + Front Flip", "Cork + Side Flip",
+      "Standing Back Full + Backflip"
     ]
   },
   trampoline: {
@@ -873,12 +1045,15 @@ const TRICKS = {
       "Backflip", "Frontflip", "Side Flip", "Pike Backflip", "Pike Frontflip",
       "Pike Side Flip", "Layout Backflip", "Layout Frontflip", "Layout Side Flip",
       "Barani", "Pike Barani", "Back Half", "Front Full", "Back Full", "Side Full",
-      "Backflip + Frontflip", "Frontflip + Backflip", "Backflip + Side Flip"
+      "Backflip + Frontflip", "Frontflip + Backflip", "Backflip + Side Flip",
+      "Pike Backflip + Pike Frontflip", "Layout Backflip + Layout Frontflip"
     ],
     beginner: [
       "Barani", "Back Half", "Front Full", "Back Full", "Side Full", "Rudy", "Pike Barani",
       "Double Backflip", "Double Frontflip", "Double Side Flip", "Full In", "Half In",
-      "Side Flip Half Twist"
+      "Side Flip Half Twist",
+      "Rudy + Barani", "Back Half + Back Full", "Full In + Half In",
+      "Double Backflip + Double Frontflip"
     ],
     intermediate: [
       "Double Backflip", "Double Frontflip", "Rudy", "Randy", "Triple Front Full", "Full In",
@@ -886,7 +1061,8 @@ const TRICKS = {
       "Front Full + Frontflip", "Side Full + Side Flip", "Full + Barani", "Backflip + Rudy",
       "Frontflip + Rudy", "Backflip + Full In", "Frontflip + Full In", "Barani + Backflip",
       "Barani + Frontflip", "Backflip + Back Full", "Frontflip + Front Full",
-      "Side Flip + Side Full", "Full In + Backflip"
+      "Side Flip + Side Full", "Full In + Backflip",
+      "Randy + Rudy", "Triple Front Full + Full In"
     ]
   }
 };
@@ -899,6 +1075,45 @@ const ADDON_TRICKS = [
 ];
 
 const FLIP_LETTERS = ["F","L","I","P"];
+
+/* ============================================================
+   TRICK TAGGING: lightweight, name-based heuristics that power the
+   Quick Trick filters (No doubles / No twisting over full / No wall
+   tricks). These are reasonable approximations from naming
+   convention, not an official difficulty chart — easy to adjust the
+   token tables below if a specific trick should be reclassified.
+   ============================================================ */
+const TWIST_TOKENS = [
+  [/Randy/i, 2.5],
+  [/Rudy/i, 1.5],
+  [/Double Full/i, 2],
+  [/Full In/i, 1],
+  [/Half In/i, 0.5],
+  [/Barani/i, 0.5],
+  [/Arabian/i, 0.5],
+  [/Cork/i, 1],
+  [/Full/i, 1] // Back/Front/Side/Cart/Scoot/Standing ... Full
+];
+function twistAmount(name){
+  let max = 0;
+  for(const [re, val] of TWIST_TOKENS){ if(re.test(name)) max = Math.max(max, val); }
+  return max;
+}
+function isDoubleTrick(name){ return /Double|Triple/i.test(name); }
+function isWallTrick(name){ return /Wall/i.test(name); }
+
+function allTrickPool(cats, diffs){
+  const seen = new Set();
+  const pool = [];
+  cats.forEach(cat => {
+    diffs.forEach(diff => {
+      (TRICKS[cat] && TRICKS[cat][diff] ? TRICKS[cat][diff] : []).forEach(t => {
+        if(!seen.has(t)){ seen.add(t); pool.push(t); }
+      });
+    });
+  });
+  return pool;
+}
 
 /* ============================================================
    PREFERENCES: theme, accent color, sound, vibration.
@@ -946,6 +1161,45 @@ function saveStats(){
 
 let stats = loadStats();
 let resetStatsArmed = false;
+
+/* ============================================================
+   QUICK TRICK: a standalone "give me one random trick" tool with
+   filters, separate from the structured game modes. Filter choices
+   persist the same safe way as prefs/stats. Also reused by Wheel
+   Spin Mode's Trick wheel so the two features share one filter set.
+   ============================================================ */
+const DEFAULT_QT_FILTERS = {
+  cats: ['ground', 'trampoline'],
+  diffs: ['novice', 'beginner', 'intermediate'],
+  noDoubles: false,
+  noTwistOverFull: false,
+  noWallTricks: false,
+  noRepeats: true
+};
+
+function loadQtFilters(){
+  try{
+    const raw = localStorage.getItem('flipQtFilters');
+    if(raw) return Object.assign({}, DEFAULT_QT_FILTERS, JSON.parse(raw));
+  }catch(e){ /* storage unavailable, use defaults */ }
+  return Object.assign({}, DEFAULT_QT_FILTERS);
+}
+function saveQtFilters(){
+  try{ localStorage.setItem('flipQtFilters', JSON.stringify(qtFilters)); }catch(e){ /* ignore */ }
+}
+
+let qtFilters = loadQtFilters();
+let qtLastTrick = null;
+
+function qtFilteredPool(){
+  const cats = qtFilters.cats.length ? qtFilters.cats : DEFAULT_QT_FILTERS.cats;
+  const diffs = qtFilters.diffs.length ? qtFilters.diffs : DEFAULT_QT_FILTERS.diffs;
+  let pool = allTrickPool(cats, diffs);
+  if(qtFilters.noDoubles) pool = pool.filter(t => !isDoubleTrick(t));
+  if(qtFilters.noTwistOverFull) pool = pool.filter(t => twistAmount(t) <= 1);
+  if(qtFilters.noWallTricks) pool = pool.filter(t => !isWallTrick(t));
+  return pool;
+}
 
 function bestTimeAttackOverall(){
   const entries = Object.entries(stats.bestTimeAttack || {});
@@ -996,6 +1250,104 @@ function resetStats(){
   showToast('Stats reset');
 }
 
+/* ============================================================
+   SAVE GAME: pause a mid-game session and resume it later. Stores a
+   snapshot of `state` (minus the non-serializable timer id) plus a
+   short human-readable description for the Home screen button.
+   Cleared whenever a game legitimately ends or is quit outright, so
+   "Resume" never points at a stale/finished game.
+   ============================================================ */
+function describeSavedGame(s){
+  const gameLabel = s.gameType === 'addon' ? 'Game of Add-On'
+    : s.gameType === 'timeattack' ? 'Time Attack'
+    : 'Game of FLIP';
+  const modeLabel = s.mode === 'multi' ? `${s.players.length} players` : 'Solo';
+  const parts = [gameLabel, modeLabel];
+  if(s.category && s.difficulty) parts.push(`${s.category} · ${s.difficulty}`);
+  return parts.join(' · ');
+}
+
+function saveGame(){
+  try{
+    const snapshot = Object.assign({}, state);
+    delete snapshot.taTimerId;
+    localStorage.setItem('flipSavedGame', JSON.stringify({ state: snapshot, savedAt: Date.now() }));
+  }catch(e){ /* storage unavailable — Save & Exit just won't persist */ }
+  updateResumeUI();
+}
+function loadSavedGame(){
+  try{
+    const raw = localStorage.getItem('flipSavedGame');
+    if(raw) return JSON.parse(raw);
+  }catch(e){ /* ignore */ }
+  return null;
+}
+function clearSavedGame(){
+  try{ localStorage.removeItem('flipSavedGame'); }catch(e){ /* ignore */ }
+  updateResumeUI();
+}
+
+function updateResumeUI(){
+  const wrap = document.getElementById('resume-game-wrap');
+  if(!wrap) return;
+  const saved = loadSavedGame();
+  if(saved && saved.state){
+    wrap.style.display = '';
+    document.getElementById('resume-game-desc').textContent = describeSavedGame(saved.state);
+  } else {
+    wrap.style.display = 'none';
+  }
+}
+
+function saveAndExit(){
+  saveGame();
+  clearInterval(state.taTimerId);
+  state.taTimerId = null;
+  if(window.speechSynthesis) window.speechSynthesis.cancel();
+  go('screen-title');
+  showToast('Game saved — resume it anytime from Home');
+}
+
+function resumeGame(){
+  const saved = loadSavedGame();
+  if(!saved || !saved.state) return;
+  state = Object.assign({}, state, saved.state);
+  state.taTimerId = null;
+
+  if(state.gameType === 'addon'){
+    document.getElementById('addon-game-badge').textContent = 'GAME OF ADD-ON';
+    renderAddonPlayers();
+    showAddonRound();
+    go('screen-addon-game');
+  } else if(state.gameType === 'timeattack'){
+    document.getElementById('ta-game-badge').textContent =
+      `${state.category.toUpperCase()} · ${state.difficulty.toUpperCase()}`;
+    renderTAPlayers();
+    const idx = state.mode === 'solo' ? 0 : state.taOrder[state.taTurnIndex];
+    const name = state.players[idx].name === 'You' ? 'Your' : `${state.players[idx].name}'s`;
+    document.getElementById('ta-turn-line').textContent = `${name} turn`;
+    document.getElementById('ta-ready-meta').textContent = `${state.taRemaining}s left (resumed) · ${state.taCount} landed so far`;
+    document.getElementById('ta-timer').textContent = state.taRemaining;
+    document.getElementById('ta-count').textContent = state.taCount;
+    showTAState('ready');
+    go('screen-timeattack-game');
+  } else {
+    document.getElementById('game-badge').textContent =
+      `${state.category.toUpperCase()} · ${state.difficulty.toUpperCase()}`;
+    document.getElementById('trick-name').textContent = state.currentTrick || '—';
+    document.getElementById('trick-meta').textContent = `${state.category} · ${state.difficulty}`;
+    if(state.mode === 'solo'){
+      document.getElementById('attempt-controls').style.display = '';
+      document.getElementById('attempt-name').textContent = state.players[0].name;
+      renderPlayers();
+    } else {
+      showNextAttempt();
+    }
+    go('screen-game');
+  }
+  showToast('Game resumed');
+}
+
 function applyTheme(){
   document.body.classList.toggle('theme-light', prefs.theme === 'light');
 }
@@ -1044,6 +1396,7 @@ function toggleVoice(el){ prefs.voice = el.checked; savePrefs(); }
 applyTheme();
 applyAccent();
 updateHomeStats();
+updateResumeUI();
 
 // --- Sound (synthesized, no audio files needed) + haptics ---
 let audioCtx = null;
@@ -1226,6 +1579,193 @@ function showToast(msg){
   t.classList.add('show');
   clearTimeout(showToast._timer);
   showToast._timer = setTimeout(() => t.classList.remove('show'), 1800);
+}
+
+/* ============================================================
+   QUICK TRICK screen: pick filters, tap Draw, get one random trick.
+   Fully independent of the structured game modes above.
+   ============================================================ */
+function openQuickTrick(){
+  updateQtFilterUI();
+  document.getElementById('qt-trick-name').textContent = 'Tap Draw to get a trick';
+  document.getElementById('qt-trick-meta').textContent = '—';
+  qtLastTrick = null;
+  go('screen-quicktrick');
+}
+
+function updateQtFilterUI(){
+  document.querySelectorAll('.qt-cat-btn').forEach(b => {
+    b.classList.toggle('active', qtFilters.cats.includes(b.dataset.cat));
+  });
+  document.querySelectorAll('.qt-diff-btn').forEach(b => {
+    b.classList.toggle('active', qtFilters.diffs.includes(b.dataset.diff));
+  });
+  document.getElementById('qt-no-doubles').checked = qtFilters.noDoubles;
+  document.getElementById('qt-no-twist').checked = qtFilters.noTwistOverFull;
+  document.getElementById('qt-no-wall').checked = qtFilters.noWallTricks;
+  document.getElementById('qt-no-repeats').checked = qtFilters.noRepeats;
+  updateQtCount();
+}
+
+function updateQtCount(){
+  const n = qtFilteredPool().length;
+  document.getElementById('qt-pool-count').textContent =
+    n === 0 ? 'No tricks match these filters' : `${n} trick${n === 1 ? '' : 's'} match these filters`;
+}
+
+function toggleQtCat(cat){
+  const has = qtFilters.cats.includes(cat);
+  if(has && qtFilters.cats.length === 1){ showToast('Keep at least one: Tramp or Ground'); return; }
+  qtFilters.cats = has ? qtFilters.cats.filter(c => c !== cat) : qtFilters.cats.concat(cat);
+  saveQtFilters();
+  updateQtFilterUI();
+}
+
+function toggleQtDiff(diff){
+  const has = qtFilters.diffs.includes(diff);
+  if(has && qtFilters.diffs.length === 1){ showToast('Keep at least one difficulty'); return; }
+  qtFilters.diffs = has ? qtFilters.diffs.filter(d => d !== diff) : qtFilters.diffs.concat(diff);
+  saveQtFilters();
+  updateQtFilterUI();
+}
+
+function toggleQtFlag(key, el){
+  qtFilters[key] = el.checked;
+  saveQtFilters();
+  updateQtCount();
+}
+
+function drawQuickTrick(){
+  let pool = qtFilteredPool();
+  if(pool.length === 0){
+    document.getElementById('qt-trick-name').textContent = 'No matches';
+    document.getElementById('qt-trick-meta').textContent = 'Loosen a filter and try again';
+    showToast('No tricks match those filters');
+    return;
+  }
+  if(qtFilters.noRepeats && pool.length > 1 && qtLastTrick){
+    pool = pool.filter(t => t !== qtLastTrick);
+  }
+  const trick = pool[Math.floor(Math.random() * pool.length)];
+  qtLastTrick = trick;
+  document.getElementById('qt-trick-name').textContent = trick;
+  document.getElementById('qt-trick-meta').textContent =
+    [isDoubleTrick(trick) ? 'double' : null, twistAmount(trick) > 0 ? `${twistAmount(trick)}× twist` : 'no twist', isWallTrick(trick) ? 'wall' : null]
+      .filter(Boolean).join(' · ');
+  playSuccess();
+}
+
+/* ============================================================
+   WHEEL SPIN MODE: spins a Player, Trick, Difficulty, and Challenge
+   in sequence. The Trick spin reuses the Quick Trick filter pool so
+   the two features stay in sync. The roster is its own lightweight
+   "current group session" list, separate from a structured game's
+   player state.
+   ============================================================ */
+const CHALLENGES = [
+  "Stick the landing", "Cleanest form wins", "One try only", "Under 3 tries",
+  "No prep step", "Opposite side", "Hold landing for 3 seconds", "Lowest setup",
+  "Best style", "Everyone does the same trick", "Winner picks next trick",
+  "Loser gets a letter", "Redo if sketchy", "Must call trick before doing it"
+];
+const DIFFICULTY_LABELS = ["Novice", "Beginner", "Intermediate"];
+
+function loadWheelRoster(){
+  try{
+    const raw = localStorage.getItem('flipWheelRoster');
+    if(raw){
+      const arr = JSON.parse(raw);
+      if(Array.isArray(arr) && arr.length) return arr;
+    }
+  }catch(e){ /* storage unavailable, use defaults */ }
+  return ['Player 1', 'Player 2'];
+}
+function saveWheelRoster(names){
+  try{ localStorage.setItem('flipWheelRoster', JSON.stringify(names)); }catch(e){ /* ignore */ }
+}
+
+let wheelSpinning = false;
+
+function openWheelSpin(){
+  const wrap = document.getElementById('wheel-player-fields');
+  wrap.innerHTML = '';
+  loadWheelRoster().forEach(name => addWheelPlayerField(name));
+  ['player', 'trick', 'difficulty', 'challenge'].forEach(k => {
+    document.getElementById('wheel-val-' + k).textContent = '—';
+  });
+  const btn = document.getElementById('wheel-spin-btn');
+  btn.disabled = false;
+  btn.textContent = '🎡 Spin';
+  go('screen-wheel');
+}
+
+function addWheelPlayerField(prefill){
+  const wrap = document.getElementById('wheel-player-fields');
+  const n = wrap.children.length + 1;
+  const row = document.createElement('div');
+  row.className = 'player-row';
+  const safeVal = prefill ? String(prefill).replace(/"/g, '&quot;') : '';
+  row.innerHTML = `<input type="text" placeholder="Player ${n} name" maxlength="16" value="${safeVal}" onchange="persistWheelRoster()">
+    <button class="remove-x" onclick="this.parentElement.remove(); persistWheelRoster();">×</button>`;
+  wrap.appendChild(row);
+}
+
+function persistWheelRoster(){
+  const inputs = document.querySelectorAll('#wheel-player-fields input');
+  const names = Array.from(inputs).map(i => i.value.trim()).filter(Boolean);
+  saveWheelRoster(names.length ? names : ['Player 1', 'Player 2']);
+}
+
+function spinWheel(){
+  if(wheelSpinning) return;
+  persistWheelRoster();
+  const names = Array.from(document.querySelectorAll('#wheel-player-fields input'))
+    .map(i => i.value.trim()).filter(Boolean);
+  if(names.length === 0){ showToast('Add at least one player'); return; }
+
+  const trickPool = qtFilteredPool();
+  if(trickPool.length === 0){ showToast('No tricks match your Quick Trick filters'); return; }
+
+  const picks = {
+    player: names[Math.floor(Math.random() * names.length)],
+    trick: trickPool[Math.floor(Math.random() * trickPool.length)],
+    difficulty: DIFFICULTY_LABELS[Math.floor(Math.random() * DIFFICULTY_LABELS.length)],
+    challenge: CHALLENGES[Math.floor(Math.random() * CHALLENGES.length)]
+  };
+
+  wheelSpinning = true;
+  const btn = document.getElementById('wheel-spin-btn');
+  btn.disabled = true;
+  btn.textContent = '🎡 Spinning...';
+
+  const order = [
+    ['player', names],
+    ['trick', trickPool],
+    ['difficulty', DIFFICULTY_LABELS],
+    ['challenge', CHALLENGES]
+  ];
+  let settleAt = 900;
+  order.forEach(([key, options], i) => {
+    const el = document.getElementById('wheel-val-' + key);
+    el.classList.add('spinning');
+    const spinTimer = setInterval(() => {
+      el.textContent = options[Math.floor(Math.random() * options.length)];
+    }, 60);
+    setTimeout(() => {
+      clearInterval(spinTimer);
+      el.classList.remove('spinning');
+      el.textContent = picks[key];
+      playTone(520 + i * 90, 0.08, 'sine');
+      if(i === order.length - 1){
+        wheelSpinning = false;
+        btn.disabled = false;
+        btn.textContent = '🎡 Spin Again';
+        playWin();
+        launchConfetti();
+      }
+    }, settleAt);
+    settleAt += 500;
+  });
 }
 
 function setGameType(type){
@@ -1435,6 +1975,7 @@ function giveLetter(idx){
 }
 
 function finishMultiplayerIfOver(){
+  clearSavedGame();
   const remaining = activePlayers();
   const winnerName = remaining[0].name.trim() || remaining[0].name;
   stats.wins[winnerName] = (stats.wins[winnerName] || 0) + 1;
@@ -1465,6 +2006,7 @@ function renderScoreboard(){
 }
 
 function endSoloGame(){
+  clearSavedGame();
   const p = state.players[0];
   document.getElementById('solo-summary').textContent =
     `You landed ${p.landedCount} trick${p.landedCount === 1 ? '' : 's'} before spelling FLIP.`;
@@ -1628,6 +2170,7 @@ function addonAttempt(landed){
 }
 
 function finishAddonMultiplayer(){
+  clearSavedGame();
   const remaining = activePlayers();
   const winner = remaining[0];
   const winnerName = winner ? (winner.name.trim() || winner.name) : '—';
@@ -1645,6 +2188,7 @@ function finishAddonMultiplayer(){
 }
 
 function endAddonSoloGame(){
+  clearSavedGame();
   const chainReached = state.sequence.length - 1;
   document.getElementById('addon-solo-summary').textContent =
     `You built a chain of ${chainReached} trick${chainReached === 1 ? '' : 's'} before missing.`;
@@ -1783,6 +2327,7 @@ function taEndTurn(){
 }
 
 function finishTimeAttackSolo(){
+  clearSavedGame();
   document.getElementById('ta-solo-summary').textContent =
     `You landed ${state.taCount} trick${state.taCount === 1 ? '' : 's'} in ${state.taLimit} seconds.`;
 
@@ -1801,6 +2346,7 @@ function finishTimeAttackSolo(){
 }
 
 function finishTimeAttackMultiplayer(){
+  clearSavedGame();
   const topCount = Math.max(...state.taResults.map(r => r.count));
   const winners = state.taResults.filter(r => r.count === topCount);
   winners.forEach(w => {
@@ -1845,6 +2391,7 @@ function confirmQuit(){
   clearInterval(state.taTimerId);
   state.taTimerId = null;
   if(window.speechSynthesis) window.speechSynthesis.cancel();
+  clearSavedGame();
   go('screen-title');
 }
 </script>
