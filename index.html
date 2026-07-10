@@ -153,6 +153,8 @@
     transition:transform .08s ease, background .15s ease;
   }
   .btn:active{ transform:scale(.97); }
+  .btn:disabled{ opacity:.4; cursor:not-allowed; }
+  .btn:disabled:active{ transform:none; }
   .btn .desc{
     display:block;
     font-weight:400;
@@ -485,6 +487,91 @@
   .wheel-reel-value.spinning{ color:var(--accent2); animation:wheelPulse .12s linear infinite alternate; }
   @keyframes wheelPulse{ from{opacity:.5;} to{opacity:1;} }
 
+  /* Profiles */
+  .profile-chip-row{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
+  .profile-chip{
+    background:var(--chip-bg);
+    border:1px solid var(--border-med);
+    border-radius:999px;
+    padding:8px 14px;
+    font-size:13px;
+    font-weight:700;
+    color:var(--text);
+    cursor:pointer;
+  }
+  .profile-chip:active{ transform:scale(.96); }
+  .profile-card{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    background:var(--card);
+    border:1px solid var(--border-soft);
+    border-radius:14px;
+    padding:14px 16px;
+    margin-bottom:10px;
+  }
+  .profile-card .pc-info{ display:flex; flex-direction:column; gap:2px; }
+  .profile-card .pc-nm{ font-weight:800; font-size:15px; }
+  .profile-card .pc-stat{ font-size:12px; color:var(--muted); }
+
+  /* Home screen extras: streak + trick of the day */
+  .streak-row{
+    display:flex;
+    justify-content:center;
+    margin-bottom:10px;
+  }
+  .streak-chip{
+    background:var(--chip-bg);
+    border:1px solid var(--border-soft);
+    border-radius:999px;
+    padding:6px 14px;
+    font-size:12.5px;
+    font-weight:700;
+    color:var(--text);
+  }
+  .trick-of-day{
+    background:var(--card);
+    border:1px solid var(--border-soft);
+    border-radius:16px;
+    padding:14px 16px;
+    text-align:center;
+    margin-bottom:14px;
+    cursor:pointer;
+  }
+  .trick-of-day .tod-label{
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:1px;
+    color:var(--muted);
+    font-weight:700;
+  }
+  .trick-of-day .tod-name{ font-size:17px; font-weight:800; margin-top:4px; }
+  .trick-of-day .tod-meta{ font-size:12px; color:var(--muted); margin-top:2px; }
+
+  /* Tournament bracket */
+  .bracket-round{ margin-bottom:16px; }
+  .bracket-round-label{
+    font-weight:700;
+    font-size:12px;
+    color:var(--muted);
+    text-transform:uppercase;
+    letter-spacing:1px;
+    margin-bottom:8px;
+  }
+  .bracket-match{
+    background:var(--card);
+    border:1px solid var(--border-soft);
+    border-radius:12px;
+    padding:10px 14px;
+    margin-bottom:8px;
+    font-size:14px;
+  }
+  .bracket-match.current{ border-color:var(--accent); }
+  .bracket-match .bm-side{ display:flex; justify-content:space-between; padding:3px 0; }
+  .bracket-match .bm-side.winner{ color:var(--good); font-weight:800; }
+  .bracket-match .bm-side.loser{ opacity:.5; text-decoration:line-through; }
+  .bracket-match .bm-bye{ color:var(--muted); font-style:italic; }
+
   .ta-stats-row{
     display:flex;
     gap:12px;
@@ -568,6 +655,9 @@
     <button class="btn btn-primary" onclick="go('screen-gametype')">Play</button>
     <button class="btn btn-outline" onclick="openQuickTrick()">🎲 Quick Trick</button>
     <button class="btn btn-outline" onclick="openWheelSpin()">🎡 Wheel Spin Mode</button>
+    <button class="btn btn-outline" onclick="openProfiles()">👤 Players</button>
+    <div class="streak-row" id="streak-row" style="display:none;"></div>
+    <div class="trick-of-day" id="trick-of-day-card" style="display:none;"></div>
     <div class="home-stats" id="home-stats" onclick="openSettings('screen-title')"></div>
     <div class="spacer"></div>
     <div class="placeholder-note">Trampoline &amp; ground flip tricks · Novice / Beginner / Intermediate</div>
@@ -580,7 +670,7 @@
       <span class="badge">STEP 1</span>
     </div>
     <h2 class="title">Choose your game</h2>
-    <p class="subtitle">Two ways to play FLIP.</p>
+    <p class="subtitle">Four ways to play FLIP.</p>
     <button class="btn" onclick="setGameType('flip')">🔤 Game of FLIP
       <span class="desc">Miss a trick your opponent landed and take a letter. Spell FLIP and you're out.</span>
     </button>
@@ -589,6 +679,9 @@
     </button>
     <button class="btn" onclick="setGameType('timeattack')">⏱️ Time Attack
       <span class="desc">Race the clock and land as many tricks as you can before time runs out.</span>
+    </button>
+    <button class="btn" onclick="setGameType('tournament')">🏆 Tournament
+      <span class="desc">4 or 8 players, single elimination. Win your match to advance.</span>
     </button>
   </div>
 
@@ -608,10 +701,122 @@
     </button>
   </div>
 
+  <!-- ADD-ON FILTERS (Add-On has no category/difficulty step, so its
+       customization lives here instead — same toggle set, applied to
+       the whole ADDON_TRICKS pool) -->
+  <div class="screen" id="screen-addon-filters">
+    <div class="top-nav">
+      <button class="back" onclick="go('screen-mode')">← Back</button>
+      <span class="badge">STEP 3</span>
+    </div>
+    <h2 class="title">Customize the chain</h2>
+    <p class="subtitle">Optional filters — combine any of these to make the chain easier or harder.</p>
+
+    <div class="section-label" style="margin-top:0; font-size:11px;">Direction — combine any of these</div>
+    <div class="switch-row">
+      <div>
+        <div class="label">Only front tricks</div>
+        <div class="sub">For players not ready for backward rotation. Stack with Side/Back to allow more than one direction.</div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="addon-only-front" onchange="toggleDiffFlag('onlyFront', this)">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="switch-row">
+      <div>
+        <div class="label">Only side tricks</div>
+        <div class="sub">Cartwheel / roundoff family. Stack with Front/Back to allow more than one direction.</div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="addon-only-side" onchange="toggleDiffFlag('onlySide', this)">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="switch-row">
+      <div>
+        <div class="label">Only backward tricks</div>
+        <div class="sub">For players who only want back rotation. Stack with Front/Side to allow more than one direction.</div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="addon-only-back" onchange="toggleDiffFlag('onlyBack', this)">
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <div class="section-label" style="font-size:11px;">Twisting — combine any of these</div>
+    <div class="switch-row">
+      <div>
+        <div class="label">No twisting over full</div>
+        <div class="sub">Caps twists at one full (360°).</div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="addon-no-twist" onchange="toggleDiffFlag('noTwistOverFull', this)">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="switch-row">
+      <div>
+        <div class="label">No twisting, period</div>
+        <div class="sub">Straight flips only — zero twist, at all.</div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="addon-no-twist-all" onchange="toggleDiffFlag('noTwistAtAll', this)">
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <div class="section-label" style="font-size:11px;">Extras</div>
+    <div class="switch-row">
+      <div>
+        <div class="label">No doubles</div>
+        <div class="sub">Skip Double / Triple tricks.</div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="addon-no-doubles" onchange="toggleDiffFlag('noDoubles', this)">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="switch-row">
+      <div>
+        <div class="label">No wall tricks</div>
+        <div class="sub">Skips tricks that use a wall.</div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="addon-no-wall" onchange="toggleDiffFlag('noWallTricks', this)">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="switch-row">
+      <div>
+        <div class="label">No vaults</div>
+        <div class="sub">Skips vault-style tricks (Kong, Dash Vault, etc).</div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="addon-no-vaults" onchange="toggleDiffFlag('noVaults', this)">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="switch-row">
+      <div>
+        <div class="label">Single tricks only</div>
+        <div class="sub">Skips two-trick combos — one skill at a time.</div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="addon-no-combos" onchange="toggleDiffFlag('noCombos', this)">
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <div class="placeholder-note" id="addon-filter-count" style="margin-top:14px;">—</div>
+    <div class="spacer"></div>
+    <button class="btn btn-primary" id="addon-filters-continue-btn" onclick="continueAddonSetup()">Continue</button>
+  </div>
+
   <!-- CATEGORY -->
   <div class="screen" id="screen-category">
     <div class="top-nav">
-      <button class="back" onclick="go('screen-mode')">← Back</button>
+      <button class="back" onclick="go(state.gameType === 'tournament' ? 'screen-bracket-setup' : 'screen-mode')">← Back</button>
       <span class="badge">STEP 3</span>
     </div>
     <h2 class="title">Ground or trampoline?</h2>
@@ -628,15 +833,116 @@
     </div>
     <h2 class="title">Pick a level</h2>
     <p class="subtitle">Tricks are pulled from this level's list.</p>
-    <button class="btn" onclick="setDifficulty('novice')">Novice
-      <span class="desc">The basics — build confidence first.</span>
+    <button class="btn" id="diff-btn-novice" onclick="setDifficulty('novice')">Novice
+      <span class="desc">The basics — build confidence first.<br><span id="diff-count-novice"></span></span>
     </button>
-    <button class="btn" onclick="setDifficulty('beginner')">Beginner
-      <span class="desc">A step up once the basics feel easy.</span>
+    <button class="btn" id="diff-btn-beginner" onclick="setDifficulty('beginner')">Beginner
+      <span class="desc">A step up once the basics feel easy.<br><span id="diff-count-beginner"></span></span>
     </button>
-    <button class="btn" onclick="setDifficulty('intermediate')">Intermediate
-      <span class="desc">Bigger, harder, more twisty.</span>
+    <button class="btn" id="diff-btn-intermediate" onclick="setDifficulty('intermediate')">Intermediate
+      <span class="desc">Bigger, harder, more twisty.<br><span id="diff-count-intermediate"></span></span>
     </button>
+    <button class="btn" id="diff-btn-advanced" onclick="setDifficulty('advanced')">Advanced
+      <span class="desc">Elite-level twist counts. Bring it.<br><span id="diff-count-advanced"></span></span>
+    </button>
+
+    <div class="section-label" style="margin-top:10px;">Filters (optional) — apply to every level</div>
+
+    <div class="section-label" style="margin-top:0; font-size:11px;">Direction — combine any of these</div>
+    <div class="switch-row">
+      <div>
+        <div class="label">Only front tricks</div>
+        <div class="sub">For players not ready for backward rotation. Stack with Side/Back to allow more than one direction.</div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="diff-only-front" onchange="toggleDiffFlag('onlyFront', this)">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="switch-row">
+      <div>
+        <div class="label">Only side tricks</div>
+        <div class="sub">Cartwheel / roundoff family. Stack with Front/Back to allow more than one direction.</div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="diff-only-side" onchange="toggleDiffFlag('onlySide', this)">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="switch-row">
+      <div>
+        <div class="label">Only backward tricks</div>
+        <div class="sub">For players who only want back rotation. Stack with Front/Side to allow more than one direction.</div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="diff-only-back" onchange="toggleDiffFlag('onlyBack', this)">
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <div class="section-label" style="font-size:11px;">Twisting — combine any of these</div>
+    <div class="switch-row">
+      <div>
+        <div class="label">No twisting over full</div>
+        <div class="sub">Caps twists at one full (360°).</div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="diff-no-twist" onchange="toggleDiffFlag('noTwistOverFull', this)">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="switch-row">
+      <div>
+        <div class="label">No twisting, period</div>
+        <div class="sub">Straight flips only — zero twist, at all.</div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="diff-no-twist-all" onchange="toggleDiffFlag('noTwistAtAll', this)">
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <div class="section-label" style="font-size:11px;">Extras</div>
+    <div class="switch-row">
+      <div>
+        <div class="label">No doubles</div>
+        <div class="sub">Skip Double / Triple tricks.</div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="diff-no-doubles" onchange="toggleDiffFlag('noDoubles', this)">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="switch-row">
+      <div>
+        <div class="label">No wall tricks</div>
+        <div class="sub">Skips tricks that use a wall.</div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="diff-no-wall" onchange="toggleDiffFlag('noWallTricks', this)">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="switch-row">
+      <div>
+        <div class="label">No vaults</div>
+        <div class="sub">Skips vault-style tricks (Kong, Dash Vault, etc).</div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="diff-no-vaults" onchange="toggleDiffFlag('noVaults', this)">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="switch-row">
+      <div>
+        <div class="label">Single tricks only</div>
+        <div class="sub">Skips two-trick combos — one skill at a time.</div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="diff-no-combos" onchange="toggleDiffFlag('noCombos', this)">
+        <span class="slider"></span>
+      </label>
+    </div>
   </div>
 
   <!-- TIME LIMIT (Time Attack only) -->
@@ -661,11 +967,12 @@
   <!-- PLAYERS (multiplayer only) -->
   <div class="screen" id="screen-players">
     <div class="top-nav">
-      <button class="back" onclick="go(state.gameType === 'timeattack' ? 'screen-timelimit' : (state.gameType === 'addon' ? 'screen-mode' : 'screen-difficulty'))">← Back</button>
+      <button class="back" onclick="go(state.gameType === 'timeattack' ? 'screen-timelimit' : (state.gameType === 'addon' ? 'screen-addon-filters' : 'screen-difficulty'))">← Back</button>
       <span class="badge">STEP</span>
     </div>
     <h2 class="title">Who's playing?</h2>
     <p class="subtitle">Add everyone passing the phone around (2+).</p>
+    <div id="players-profile-chips"></div>
     <div id="player-fields"></div>
     <div class="add-player" onclick="addPlayerField()">+ Add player</div>
     <div class="spacer"></div>
@@ -841,23 +1148,48 @@
     </div>
 
     <div class="section-label">Difficulty</div>
-    <div class="theme-toggle">
-      <button class="qt-diff-btn" data-diff="novice" onclick="toggleQtDiff('novice')">Novice</button>
-      <button class="qt-diff-btn" data-diff="beginner" onclick="toggleQtDiff('beginner')">Beginner</button>
-      <button class="qt-diff-btn" data-diff="intermediate" onclick="toggleQtDiff('intermediate')">Intermediate</button>
+    <div class="theme-toggle" style="flex-wrap:wrap; row-gap:8px;">
+      <button class="qt-diff-btn" data-diff="novice" onclick="toggleQtDiff('novice')" style="font-size:13px; padding:10px 6px;">Novice</button>
+      <button class="qt-diff-btn" data-diff="beginner" onclick="toggleQtDiff('beginner')" style="font-size:13px; padding:10px 6px;">Beginner</button>
+      <button class="qt-diff-btn" data-diff="intermediate" onclick="toggleQtDiff('intermediate')" style="font-size:13px; padding:10px 6px;">Intermediate</button>
+      <button class="qt-diff-btn" data-diff="advanced" onclick="toggleQtDiff('advanced')" style="font-size:13px; padding:10px 6px;">Advanced</button>
     </div>
 
-    <div class="section-label">Rules</div>
+    <div class="section-label" style="margin-top:10px;">Filters (optional) — combine any of these</div>
+
+    <div class="section-label" style="margin-top:0; font-size:11px;">Direction — combine any of these</div>
     <div class="switch-row">
       <div>
-        <div class="label">No doubles</div>
-        <div class="sub">Skip Double / Triple tricks.</div>
+        <div class="label">Only front tricks</div>
+        <div class="sub">For players not ready for backward rotation. Stack with Side/Back to allow more than one direction.</div>
       </div>
       <label class="switch">
-        <input type="checkbox" id="qt-no-doubles" onchange="toggleQtFlag('noDoubles', this)">
+        <input type="checkbox" id="qt-only-front" onchange="toggleQtFlag('onlyFront', this)">
         <span class="slider"></span>
       </label>
     </div>
+    <div class="switch-row">
+      <div>
+        <div class="label">Only side tricks</div>
+        <div class="sub">Cartwheel / roundoff family. Stack with Front/Back to allow more than one direction.</div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="qt-only-side" onchange="toggleQtFlag('onlySide', this)">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="switch-row">
+      <div>
+        <div class="label">Only backward tricks</div>
+        <div class="sub">For players who only want back rotation. Stack with Front/Side to allow more than one direction.</div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="qt-only-back" onchange="toggleQtFlag('onlyBack', this)">
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <div class="section-label" style="font-size:11px;">Twisting — combine any of these</div>
     <div class="switch-row">
       <div>
         <div class="label">No twisting over full</div>
@@ -870,11 +1202,53 @@
     </div>
     <div class="switch-row">
       <div>
+        <div class="label">No twisting, period</div>
+        <div class="sub">Straight flips only — zero twist, at all.</div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="qt-no-twist-all" onchange="toggleQtFlag('noTwistAtAll', this)">
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <div class="section-label" style="font-size:11px;">Extras</div>
+    <div class="switch-row">
+      <div>
+        <div class="label">No doubles</div>
+        <div class="sub">Skip Double / Triple tricks.</div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="qt-no-doubles" onchange="toggleQtFlag('noDoubles', this)">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="switch-row">
+      <div>
         <div class="label">No wall tricks</div>
         <div class="sub">Skips tricks that use a wall.</div>
       </div>
       <label class="switch">
         <input type="checkbox" id="qt-no-wall" onchange="toggleQtFlag('noWallTricks', this)">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="switch-row">
+      <div>
+        <div class="label">No vaults</div>
+        <div class="sub">Skips vault-style tricks (Kong, Dash Vault, etc).</div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="qt-no-vaults" onchange="toggleQtFlag('noVaults', this)">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="switch-row">
+      <div>
+        <div class="label">Single tricks only</div>
+        <div class="sub">Skips two-trick combos — one skill at a time.</div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="qt-no-combos" onchange="toggleQtFlag('noCombos', this)">
         <span class="slider"></span>
       </label>
     </div>
@@ -910,6 +1284,7 @@
     <p class="subtitle">Spin for who, what trick, how hard, and the twist.</p>
 
     <div class="section-label">Players in this session</div>
+    <div id="wheel-profile-chips"></div>
     <div id="wheel-player-fields"></div>
     <div class="add-player" onclick="addWheelPlayerField()">+ Add player</div>
 
@@ -935,6 +1310,97 @@
 
     <div class="spacer"></div>
     <button class="btn btn-primary" id="wheel-spin-btn" onclick="spinWheel()">🎡 Spin</button>
+  </div>
+
+  <!-- PLAYER PROFILES -->
+  <div class="screen" id="screen-profiles">
+    <div class="top-nav">
+      <button class="back" onclick="go('screen-title')">← Back</button>
+      <span class="badge">PLAYERS</span>
+      <button class="icon-btn" style="width:36px;height:36px;font-size:15px;" onclick="openSettings('screen-profiles')" aria-label="Settings">⚙️</button>
+    </div>
+    <h2 class="title">Players</h2>
+    <p class="subtitle">Save names once — reuse them for Multiplayer and Wheel Spin.</p>
+
+    <div class="field">
+      <input type="text" id="profile-name-input" placeholder="Add a player name" maxlength="16">
+    </div>
+    <button class="btn btn-outline" style="margin-bottom:20px;" onclick="addProfileFromInput()">+ Save player</button>
+
+    <div id="profiles-list"></div>
+    <div class="placeholder-note" id="profiles-empty-note" style="display:none;">No saved players yet — add one above.</div>
+
+    <div class="spacer"></div>
+  </div>
+
+  <!-- TOURNAMENT BRACKET -->
+  <div class="screen" id="screen-bracket-setup">
+    <div class="top-nav">
+      <button class="back" onclick="go('screen-gametype')">← Back</button>
+      <span class="badge">TOURNAMENT</span>
+    </div>
+    <h2 class="title">Set up the bracket</h2>
+    <p class="subtitle">4 or 8 players, single elimination. Add names below.</p>
+    <div id="bracket-profile-chips"></div>
+    <div id="bracket-player-fields"></div>
+    <div class="add-player" onclick="addBracketPlayerField()">+ Add player</div>
+    <div class="spacer"></div>
+    <button class="btn btn-primary" onclick="startBracketSetup()">Continue</button>
+  </div>
+
+  <div class="screen" id="screen-bracket">
+    <div class="top-nav">
+      <div style="display:flex; gap:6px; align-items:center;">
+        <button class="back" onclick="confirmQuit()">✕ Quit</button>
+      </div>
+      <span class="badge" id="bracket-game-badge">TOURNAMENT</span>
+      <button class="icon-btn" style="width:36px;height:36px;font-size:15px;" onclick="openSettings('screen-bracket')" aria-label="Settings">⚙️</button>
+    </div>
+    <div class="setter-line" id="bracket-round-line">Round 1</div>
+
+    <div class="trick-card">
+      <div class="trick-name" id="bracket-trick-name">—</div>
+      <div class="trick-meta" id="bracket-trick-meta">—</div>
+    </div>
+
+    <div id="bracket-attempt-controls" style="display:none;">
+      <div class="attempt-label"><span class="attempt-name" id="bracket-attempt-name">—</span>'s turn to attempt</div>
+      <div class="row">
+        <button class="btn" style="background:var(--good); color:#04241a;" onclick="bracketRecordAttempt(true)">✅ Success</button>
+        <button class="btn" style="background:var(--danger); color:#2a0410;" onclick="bracketRecordAttempt(false)">❌ Fail</button>
+      </div>
+    </div>
+
+    <div class="players-panel" id="bracket-players-panel"></div>
+
+    <div class="section-label" style="margin-top:16px;">Bracket</div>
+    <div id="bracket-progress"></div>
+  </div>
+
+  <!-- TOURNAMENT CHAMPION -->
+  <div class="screen" id="screen-bracket-champion">
+    <div class="spacer"></div>
+    <div class="win-emoji">🏆</div>
+    <div class="win-name" id="bracket-champion-name">—</div>
+    <div class="win-sub">won the tournament!</div>
+    <div class="scoreboard" id="bracket-final-results"></div>
+    <button class="btn btn-primary" onclick="go('screen-title')">🏠 Home Page</button>
+    <div class="spacer"></div>
+  </div>
+
+  <!-- TRICK STATS -->
+  <div class="screen" id="screen-trick-stats">
+    <div class="top-nav">
+      <button class="back" onclick="go(settingsReturnTo)">← Back</button>
+      <span class="badge">TRICK STATS</span>
+    </div>
+    <h2 class="title">Trick Stats</h2>
+    <p class="subtitle">Landed vs. missed, tracked per trick across every mode.</p>
+
+    <div id="trick-stats-list"></div>
+    <div class="placeholder-note" id="trick-stats-empty-note" style="display:none;">No attempts recorded yet — play a round and come back.</div>
+
+    <div class="spacer"></div>
   </div>
 
   <!-- SETTINGS -->
@@ -1000,6 +1466,13 @@
       </div>
       <button class="btn-outline" id="reset-stats-btn" style="width:auto; padding:10px 14px; border-radius:10px; font-size:13px; white-space:nowrap;" onclick="resetStats()">Reset</button>
     </div>
+    <div class="reset-row">
+      <div>
+        <div class="label">Per-trick stats</div>
+        <div class="sub">See landed/missed broken down by trick.</div>
+      </div>
+      <button class="btn-outline" style="width:auto; padding:10px 14px; border-radius:10px; font-size:13px; white-space:nowrap;" onclick="settingsReturnTo='screen-settings'; openTrickStats();">View</button>
+    </div>
 
     <div class="spacer"></div>
     <div class="placeholder-note">Settings save automatically on this device.</div>
@@ -1022,20 +1495,26 @@ const TRICKS = {
     novice: [
       "Front Roll", "Dive Roll", "360 Dive Roll", "Cartwheel", "Cartwheel (Opposite Side)",
       "One-Hand Cartwheel", "One-Hand Cartwheel (Opposite Hand)", "Roundoff", "Front Handspring",
-      "Front Handspring Step-Out", "Back Handspring", "Back Handspring Step-Out", "Lazy Vault",
-      "Speed Vault", "Safety Vault", "Dash Vault", "Kong", "Pop Vault",
+      "Back Handspring", "Back Handspring Step-Out", "Lazy Vault",
+      "Speed Vault", "Safety Vault", "Dash Vault", "Kong",
+      "Handstand Forward Roll", "Back Roll to Handstand", "Handstand Snap Down",
       "Roundoff + Back Handspring", "Cartwheel + Roundoff", "Front Handspring + Back Handspring",
       "Dive Roll + Front Roll"
     ],
     beginner: [
       "Front Flip", "Backflip", "Side Flip", "Webster", "No-Hand Front Flip", "Palm Flip",
-      "Wall Flip", "Gainer", "Cheat Gainer", "Aerial", "Front Layout", "Back Layout",
+      "Wall Flip", "Gainer", "Cheat Gainer", "Front Layout", "Back Layout",
       "Running Front Flip", "Standing Backflip", "Standing Side Flip", "Running Side Flip",
-      "Back Handspring + Backflip", "Roundoff + Front Flip", "Gainer + Cheat Gainer"
+      "Standing Front Flip", "Punch Front", "Gainer Pike",
+      "Back Handspring + Backflip", "Roundoff + Backflip"
     ],
     intermediate: [
       "Arabian", "Cart Arabian", "Scoot Arabian", "Back Full", "Cart Full", "Scoot Full",
-      "Cork", "Scoot Cork", "Standing Arabian", "Standing Back Full",
+      "Cork", "Scoot Cork", "Standing Arabian", "Standing Back Full"
+    ],
+    advanced: [
+      "Randy", "Cart Randy", "Scoot Randy", "Standing Randy", "Double Full",
+      "Double Arabian", "Miller", "Adolph",
       "Back Full + Backflip", "Arabian + Front Flip", "Cork + Side Flip",
       "Standing Back Full + Backflip"
     ]
@@ -1045,24 +1524,39 @@ const TRICKS = {
       "Backflip", "Frontflip", "Side Flip", "Pike Backflip", "Pike Frontflip",
       "Pike Side Flip", "Layout Backflip", "Layout Frontflip", "Layout Side Flip",
       "Barani", "Pike Barani", "Back Half", "Front Full", "Back Full", "Side Full",
+      "Seat Drop", "Knee Drop", "Knee Drop to 180", "Front Drop", "Back Drop",
+      "Seat Drop Half Turn", "Cradle", "Front Drop to Feet", "Back Drop to Feet",
+      "Knee Backflip", "Knee Frontflip", "Knee Side Flip",
+      "Cartwheel", "Cartwheel (Opposite Side)", "One-Hand Cartwheel",
+      "One-Hand Cartwheel (Opposite Hand)", "Roundoff", "Front Handspring",
+      "Back Handspring", "Back Handspring Step-Out",
+      "Front Roll", "Dive Roll",
       "Backflip + Frontflip", "Frontflip + Backflip", "Backflip + Side Flip",
       "Pike Backflip + Pike Frontflip", "Layout Backflip + Layout Frontflip"
     ],
     beginner: [
       "Barani", "Back Half", "Front Full", "Back Full", "Side Full", "Rudy", "Pike Barani",
-      "Double Backflip", "Double Frontflip", "Double Side Flip", "Full In", "Half In",
-      "Side Flip Half Twist",
-      "Rudy + Barani", "Back Half + Back Full", "Full In + Half In",
-      "Double Backflip + Double Frontflip"
+      "Double Backflip", "Double Frontflip", "Double Side Flip", "Half In",
+      "Side Flip Half Twist", "Pike Side Full",
+      "Barani Ball Out", "Ball Out", "Aerial",
+      "Knee Full", "Knee Back Half", "Knee Front Half", "Knee Front Full", "Knee Side Full",
+      "Knee Rudy",
+      "Rudy + Barani", "Back Half + Back Full"
     ],
     intermediate: [
-      "Double Backflip", "Double Frontflip", "Rudy", "Randy", "Triple Front Full", "Full In",
-      "Half In", "Double Full", "Back Full", "Front Full", "Side Full", "Back Full + Backflip",
+      "Double Backflip", "Double Frontflip", "Rudy", "Full In",
+      "Half In", "Double Full", "Back Full", "Front Full", "Side Full",
+      "Back Full + Backflip",
       "Front Full + Frontflip", "Side Full + Side Flip", "Full + Barani", "Backflip + Rudy",
       "Frontflip + Rudy", "Backflip + Full In", "Frontflip + Full In", "Barani + Backflip",
       "Barani + Frontflip", "Backflip + Back Full", "Frontflip + Front Full",
-      "Side Flip + Side Full", "Full In + Backflip",
-      "Randy + Rudy", "Triple Front Full + Full In"
+      "Side Flip + Side Full", "Full In + Backflip"
+    ],
+    advanced: [
+      "Randy", "Triple Front Full", "Miller", "Adolph", "Cody", "Triple Backflip",
+      "Triple Full", "Double Full In",
+      "Randy + Rudy", "Triple Front Full + Full In", "Miller + Randy", "Adolph + Miller",
+      "Cody + Full In", "Double Full In + Half In"
     ]
   }
 };
@@ -1071,7 +1565,11 @@ const ADDON_TRICKS = [
   "Butt Drop", "Back Drop", "Front Drop", "Knee Drop", "Seat Half Turn", "Swivel Hips",
   "Front Flip", "Back Flip", "Side Flip", "Barani", "Arabian", "Back Full", "Front Full",
   "Side Full", "Arabian Full", "Gainer", "Webster", "Front Layout", "Back Layout",
-  "Pike Front", "Pike Back", "Tuck Jump", "Pike Jump", "360 Jump"
+  "Pike Front", "Pike Back", "Tuck Jump", "Pike Jump", "360 Jump",
+  "Cartwheel", "Roundoff", "Front Handspring", "Back Handspring", "Aerial", "Cheat Gainer",
+  "Standing Backflip", "Standing Front Flip", "Rudy", "Randy", "Cork", "Double Backflip",
+  "Double Frontflip", "Full In", "Half In", "Knee Backflip", "Knee Frontflip", "Seat Drop",
+  "Cradle", "Crash Dive", "Whip Back", "Punch Front", "Front Tuck", "Back Tuck", "Miller"
 ];
 
 const FLIP_LETTERS = ["F","L","I","P"];
@@ -1084,6 +1582,8 @@ const FLIP_LETTERS = ["F","L","I","P"];
    token tables below if a specific trick should be reclassified.
    ============================================================ */
 const TWIST_TOKENS = [
+  [/Adolph/i, 4.5],
+  [/Miller/i, 3.5],
   [/Randy/i, 2.5],
   [/Rudy/i, 1.5],
   [/Double Full/i, 2],
@@ -1092,7 +1592,8 @@ const TWIST_TOKENS = [
   [/Barani/i, 0.5],
   [/Arabian/i, 0.5],
   [/Cork/i, 1],
-  [/Full/i, 1] // Back/Front/Side/Cart/Scoot/Standing ... Full
+  [/Full/i, 1], // Back/Front/Side/Cart/Scoot/Standing/Knee ... Full
+  [/Half/i, 0.5] // Back/Front/Knee ... Half (catches bare "Half" the same way "Full" is caught above)
 ];
 function twistAmount(name){
   let max = 0;
@@ -1101,6 +1602,7 @@ function twistAmount(name){
 }
 function isDoubleTrick(name){ return /Double|Triple/i.test(name); }
 function isWallTrick(name){ return /Wall/i.test(name); }
+function isVaultTrick(name){ return /Vault/i.test(name) || /Kong/i.test(name); }
 
 function allTrickPool(cats, diffs){
   const seen = new Set();
@@ -1140,7 +1642,7 @@ let settingsReturnTo = 'screen-title';
    STATS: solo best streak + multiplayer win scoreboard.
    Persisted the same safe way as prefs.
    ============================================================ */
-const DEFAULT_STATS = { bestStreak: 0, bestChain: 0, wins: {}, bestTimeAttack: {} };
+const DEFAULT_STATS = { bestStreak: 0, bestChain: 0, wins: {}, bestTimeAttack: {}, trickStats: {} };
 
 function loadStats(){
   try{
@@ -1149,7 +1651,8 @@ function loadStats(){
       const parsed = JSON.parse(raw);
       return Object.assign({}, DEFAULT_STATS, parsed, {
         wins: Object.assign({}, parsed.wins || {}),
-        bestTimeAttack: Object.assign({}, parsed.bestTimeAttack || {})
+        bestTimeAttack: Object.assign({}, parsed.bestTimeAttack || {}),
+        trickStats: Object.assign({}, parsed.trickStats || {})
       });
     }
   }catch(e){ /* storage unavailable, use defaults */ }
@@ -1163,6 +1666,53 @@ let stats = loadStats();
 let resetStatsArmed = false;
 
 /* ============================================================
+   PER-TRICK STATS: landed/missed counts keyed by trick name.
+   Approximate (same trick name can appear in multiple categories),
+   but gives players a useful "which tricks do I actually land" view.
+   ============================================================ */
+function recordTrickStat(trickName, landed){
+  if(!trickName) return;
+  if(!stats.trickStats) stats.trickStats = {};
+  const entry = stats.trickStats[trickName] || { landed: 0, missed: 0 };
+  if(landed) entry.landed++; else entry.missed++;
+  stats.trickStats[trickName] = entry;
+  saveStats();
+}
+function trickStatsSorted(){
+  const names = Object.keys(stats.trickStats || {});
+  return names.map(name => {
+    const e = stats.trickStats[name];
+    const attempts = e.landed + e.missed;
+    const rate = attempts ? Math.round((e.landed / attempts) * 100) : 0;
+    return { name, landed: e.landed, missed: e.missed, attempts, rate };
+  }).sort((a, b) => b.attempts - a.attempts);
+}
+function renderTrickStats(){
+  const wrap = document.getElementById('trick-stats-list');
+  if(!wrap) return;
+  const rows = trickStatsSorted();
+  const emptyNote = document.getElementById('trick-stats-empty-note');
+  if(!rows.length){
+    wrap.innerHTML = '';
+    if(emptyNote) emptyNote.style.display = 'block';
+    return;
+  }
+  if(emptyNote) emptyNote.style.display = 'none';
+  wrap.innerHTML = rows.map(r => `
+    <div class="profile-card">
+      <div class="pc-info">
+        <div class="pc-nm">${r.name}</div>
+        <div class="pc-stat">${r.landed} landed &middot; ${r.missed} missed &middot; ${r.rate}% rate</div>
+      </div>
+    </div>
+  `).join('');
+}
+function openTrickStats(){
+  renderTrickStats();
+  go('screen-trick-stats');
+}
+
+/* ============================================================
    QUICK TRICK: a standalone "give me one random trick" tool with
    filters, separate from the structured game modes. Filter choices
    persist the same safe way as prefs/stats. Also reused by Wheel
@@ -1170,10 +1720,16 @@ let resetStatsArmed = false;
    ============================================================ */
 const DEFAULT_QT_FILTERS = {
   cats: ['ground', 'trampoline'],
-  diffs: ['novice', 'beginner', 'intermediate'],
+  diffs: ['novice', 'beginner', 'intermediate', 'advanced'],
+  onlyFront: false,
+  onlySide: false,
+  onlyBack: false,
   noDoubles: false,
   noTwistOverFull: false,
+  noTwistAtAll: false,
   noWallTricks: false,
+  noVaults: false,
+  noCombos: false,
   noRepeats: true
 };
 
@@ -1195,10 +1751,222 @@ function qtFilteredPool(){
   const cats = qtFilters.cats.length ? qtFilters.cats : DEFAULT_QT_FILTERS.cats;
   const diffs = qtFilters.diffs.length ? qtFilters.diffs : DEFAULT_QT_FILTERS.diffs;
   let pool = allTrickPool(cats, diffs);
+  // Direction filters combine as OR (checking more than one widens the
+  // pool rather than narrowing it to nothing) — same logic as the Game
+  // of FLIP difficulty screen's filteredTrickList().
+  const allowedDirections = ['onlyFront', 'onlySide', 'onlyBack']
+    .filter(key => qtFilters[key])
+    .map(key => ({ onlyFront: 'front', onlySide: 'side', onlyBack: 'back' }[key]));
+  if(allowedDirections.length) pool = pool.filter(t => allowedDirections.includes(trickDirection(t)));
   if(qtFilters.noDoubles) pool = pool.filter(t => !isDoubleTrick(t));
   if(qtFilters.noTwistOverFull) pool = pool.filter(t => twistAmount(t) <= 1);
+  if(qtFilters.noTwistAtAll) pool = pool.filter(t => twistAmount(t) === 0);
   if(qtFilters.noWallTricks) pool = pool.filter(t => !isWallTrick(t));
+  if(qtFilters.noVaults) pool = pool.filter(t => !isVaultTrick(t));
+  if(qtFilters.noCombos) pool = pool.filter(t => !isComboTrick(t));
   return pool;
+}
+
+/* ============================================================
+   TRICK DIRECTION TAGGING: front / back / side, powering the
+   "Only front tricks" / "Only side tricks" filters below. Same
+   approximate, name-based approach as the twist/double/wall
+   tagging above — not an official chart, just a best-effort read
+   of naming convention (easy to retag via the token lists if a
+   specific trick should move categories). Combo tricks ("A + B")
+   are tagged by combining each half's direction; if the two
+   halves disagree the combo is "mixed" and sits out both the
+   front-only and side-only filters (it still shows up when
+   neither filter is on).
+   ============================================================ */
+// Explicit direction words always win first — checked before any of the
+// named-skill fallbacks below, so a name like "Side Full" reads as "side"
+// instead of getting caught by the generic Full → back fallback.
+const EXPLICIT_DIRECTION_TOKENS = [
+  [/Front/i, 'front'],
+  [/Back/i, 'back'],
+  [/Side/i, 'side']
+];
+const FRONT_TOKENS = [/Dive Roll/i, /Arabian/i, /Rudy/i, /Randy/i, /Barani/i, /Palm Flip/i, /Miller/i, /Adolph/i];
+const BACK_TOKENS = [/Gainer/i, /Webster/i, /Cork/i, /Full In/i, /Half In/i, /Double Full/i, /Full/i];
+const SIDE_TOKENS = [/Cartwheel/i, /Roundoff/i, /Aerial/i];
+
+function singleTrickDirection(name){
+  for(const [re, dir] of EXPLICIT_DIRECTION_TOKENS){ if(re.test(name)) return dir; }
+  if(FRONT_TOKENS.some(re => re.test(name))) return 'front';
+  if(BACK_TOKENS.some(re => re.test(name))) return 'back';
+  if(SIDE_TOKENS.some(re => re.test(name))) return 'side';
+  return 'neutral';
+}
+function trickDirection(name){
+  const dirs = name.split(' + ').map(p => singleTrickDirection(p.trim())).filter(d => d !== 'neutral');
+  const unique = [...new Set(dirs)];
+  if(unique.length === 0) return 'neutral';
+  if(unique.length === 1) return unique[0];
+  return 'mixed';
+}
+function isComboTrick(name){ return name.includes(' + '); }
+
+/* ============================================================
+   DIFFICULTY FILTERS: optional toggles on the "Pick a level" step
+   (Game of FLIP + Time Attack + Tournament, which all share that
+   screen) so every level — Novice through Advanced — can be dialed
+   easier or harder for whoever's playing, instead of Novice being
+   the only "easy" option. Grouped into Direction (front/side/back),
+   Twisting (cap at one full, or no twisting at all), and Extras
+   (doubles, wall tricks, vaults, combo tricks). Every toggle is
+   independently selectable — no group is mutually exclusive, so
+   e.g. "Only front" + "Only side" together means "front or side, no
+   back." Direction filters combine as OR (any checked direction
+   passes); everything else combines as AND. Persisted the same safe
+   way as prefs/stats. Game of Add-On has no category/difficulty
+   step, but shares this exact same filter state via its own
+   "Customize the chain" screen (see ADDON_TOGGLE_IDS below), applied
+   to the flat ADDON_TRICKS pool instead of TRICKS[cat][diff].
+   ============================================================ */
+const DEFAULT_DIFF_FILTERS = {
+  onlyFront: false,
+  onlySide: false,
+  onlyBack: false,
+  noDoubles: false,
+  noTwistOverFull: false,
+  noTwistAtAll: false,
+  noWallTricks: false,
+  noVaults: false,
+  noCombos: false
+};
+function loadDiffFilters(){
+  try{
+    const raw = localStorage.getItem('flipDiffFilters');
+    if(raw) return Object.assign({}, DEFAULT_DIFF_FILTERS, JSON.parse(raw));
+  }catch(e){ /* storage unavailable, use defaults */ }
+  return Object.assign({}, DEFAULT_DIFF_FILTERS);
+}
+function saveDiffFilters(){
+  try{ localStorage.setItem('flipDiffFilters', JSON.stringify(diffFilters)); }catch(e){ /* ignore */ }
+}
+let diffFilters = loadDiffFilters();
+
+function filteredTrickList(category, difficulty){
+  let list = (TRICKS[category] && TRICKS[category][difficulty]) ? TRICKS[category][difficulty] : [];
+  // Direction toggles are multi-select: checking more than one (e.g. "Only
+  // front" + "Only side") means "allow any of these directions" (OR), not
+  // an impossible AND of two directions at once. None checked = no
+  // direction filtering at all.
+  const allowedDirections = ['onlyFront', 'onlySide', 'onlyBack']
+    .filter(key => diffFilters[key])
+    .map(key => ({ onlyFront: 'front', onlySide: 'side', onlyBack: 'back' }[key]));
+  if(allowedDirections.length) list = list.filter(t => allowedDirections.includes(trickDirection(t)));
+  if(diffFilters.noDoubles) list = list.filter(t => !isDoubleTrick(t));
+  if(diffFilters.noTwistOverFull) list = list.filter(t => twistAmount(t) <= 1);
+  if(diffFilters.noTwistAtAll) list = list.filter(t => twistAmount(t) === 0);
+  if(diffFilters.noWallTricks) list = list.filter(t => !isWallTrick(t));
+  if(diffFilters.noVaults) list = list.filter(t => !isVaultTrick(t));
+  if(diffFilters.noCombos) list = list.filter(t => !isComboTrick(t));
+  return list;
+}
+
+const DIFF_TOGGLE_IDS = {
+  onlyFront: 'diff-only-front',
+  onlySide: 'diff-only-side',
+  onlyBack: 'diff-only-back',
+  noDoubles: 'diff-no-doubles',
+  noTwistOverFull: 'diff-no-twist',
+  noTwistAtAll: 'diff-no-twist-all',
+  noWallTricks: 'diff-no-wall',
+  noVaults: 'diff-no-vaults',
+  noCombos: 'diff-no-combos'
+};
+
+function updateDifficultyFilterUI(){
+  Object.keys(DIFF_TOGGLE_IDS).forEach(key => {
+    const el = document.getElementById(DIFF_TOGGLE_IDS[key]);
+    if(el) el.checked = diffFilters[key];
+  });
+  if(!state.category) return;
+  ['novice', 'beginner', 'intermediate', 'advanced'].forEach(diff => {
+    const count = filteredTrickList(state.category, diff).length;
+    const btn = document.getElementById('diff-btn-' + diff);
+    const countEl = document.getElementById('diff-count-' + diff);
+    if(countEl){
+      countEl.textContent = count === 0
+        ? 'No tricks match your filters'
+        : `${count} trick${count === 1 ? '' : 's'} available`;
+    }
+    if(btn) btn.disabled = count === 0;
+  });
+}
+
+/* Game of Add-On has no category/difficulty step — it pulls from the
+   flat ADDON_TRICKS pool instead of TRICKS[category][difficulty] — but
+   the same 9 toggles still apply to that pool, so Add-On shares the
+   exact same `diffFilters` state as Game of FLIP/Time Attack/Tournament
+   rather than keeping a separate copy. Its checkboxes just live under
+   different ids (addon-*) on their own screen. */
+const ADDON_TOGGLE_IDS = {
+  onlyFront: 'addon-only-front',
+  onlySide: 'addon-only-side',
+  onlyBack: 'addon-only-back',
+  noDoubles: 'addon-no-doubles',
+  noTwistOverFull: 'addon-no-twist',
+  noTwistAtAll: 'addon-no-twist-all',
+  noWallTricks: 'addon-no-wall',
+  noVaults: 'addon-no-vaults',
+  noCombos: 'addon-no-combos'
+};
+
+function filteredAddonTricks(){
+  let list = ADDON_TRICKS.slice();
+  const allowedDirections = ['onlyFront', 'onlySide', 'onlyBack']
+    .filter(key => diffFilters[key])
+    .map(key => ({ onlyFront: 'front', onlySide: 'side', onlyBack: 'back' }[key]));
+  if(allowedDirections.length) list = list.filter(t => allowedDirections.includes(trickDirection(t)));
+  if(diffFilters.noDoubles) list = list.filter(t => !isDoubleTrick(t));
+  if(diffFilters.noTwistOverFull) list = list.filter(t => twistAmount(t) <= 1);
+  if(diffFilters.noTwistAtAll) list = list.filter(t => twistAmount(t) === 0);
+  if(diffFilters.noWallTricks) list = list.filter(t => !isWallTrick(t));
+  if(diffFilters.noVaults) list = list.filter(t => !isVaultTrick(t));
+  if(diffFilters.noCombos) list = list.filter(t => !isComboTrick(t));
+  return list;
+}
+
+function updateAddonFilterUI(){
+  Object.keys(ADDON_TOGGLE_IDS).forEach(key => {
+    const el = document.getElementById(ADDON_TOGGLE_IDS[key]);
+    if(el) el.checked = diffFilters[key];
+  });
+  const count = filteredAddonTricks().length;
+  const countEl = document.getElementById('addon-filter-count');
+  if(countEl){
+    countEl.textContent = count === 0
+      ? 'No tricks match your filters'
+      : `${count} trick${count === 1 ? '' : 's'} available`;
+  }
+  const btn = document.getElementById('addon-filters-continue-btn');
+  if(btn) btn.disabled = count === 0;
+}
+
+function continueAddonSetup(){
+  if(filteredAddonTricks().length === 0){
+    showToast('No tricks match your filters — loosen one and try again');
+    return;
+  }
+  goToPlayersOrStart();
+}
+
+function toggleDiffFlag(key, el, exclusiveWith){
+  diffFilters[key] = el.checked;
+  if(el.checked && exclusiveWith){
+    const group = Array.isArray(exclusiveWith) ? exclusiveWith : [exclusiveWith];
+    group.forEach(otherKey => {
+      diffFilters[otherKey] = false;
+      const exEl = document.getElementById(DIFF_TOGGLE_IDS[otherKey]);
+      if(exEl) exEl.checked = false;
+    });
+  }
+  saveDiffFilters();
+  updateDifficultyFilterUI();
+  updateAddonFilterUI();
 }
 
 function bestTimeAttackOverall(){
@@ -1243,11 +2011,89 @@ function resetStats(){
     return;
   }
   resetStatsArmed = false;
-  stats = { bestStreak: 0, bestChain: 0, wins: {}, bestTimeAttack: {} };
+  stats = Object.assign({}, DEFAULT_STATS, { wins: {}, bestTimeAttack: {}, trickStats: {} });
   saveStats();
+  renderTrickStats();
   btn.textContent = 'Reset';
   document.getElementById('stats-summary').textContent = statsSummaryText();
   showToast('Stats reset');
+}
+
+/* ============================================================
+   PRACTICE STREAK + TRICK OF THE DAY: a lightweight daily-return
+   hook. The streak counts consecutive calendar days the app was
+   opened; Trick of the Day is a date-seeded pick so everyone sees
+   the same trick on the same day without needing a server.
+   ============================================================ */
+const DEFAULT_STREAK = { count: 0, lastDay: null, bestCount: 0 };
+
+function todayString(){
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function daysBetween(a, b){
+  const da = new Date(a + 'T00:00:00');
+  const db = new Date(b + 'T00:00:00');
+  return Math.round((db - da) / 86400000);
+}
+function loadStreak(){
+  try{
+    const raw = localStorage.getItem('flipStreak');
+    if(raw) return Object.assign({}, DEFAULT_STREAK, JSON.parse(raw));
+  }catch(e){ /* storage unavailable, use defaults */ }
+  return Object.assign({}, DEFAULT_STREAK);
+}
+function saveStreak(){
+  try{ localStorage.setItem('flipStreak', JSON.stringify(streak)); }catch(e){ /* ignore */ }
+}
+
+let streak = loadStreak();
+
+function updateStreak(){
+  const today = todayString();
+  if(streak.lastDay === today){
+    // already counted today, nothing to change
+  } else if(streak.lastDay && daysBetween(streak.lastDay, today) === 1){
+    streak.count++;
+    streak.lastDay = today;
+  } else {
+    // first-ever visit, or the streak lapsed (gap of 2+ days) — restart at 1
+    streak.count = 1;
+    streak.lastDay = today;
+  }
+  if(streak.count > streak.bestCount) streak.bestCount = streak.count;
+  saveStreak();
+}
+
+function updateStreakUI(){
+  const wrap = document.getElementById('streak-row');
+  if(!wrap) return;
+  if(streak.count <= 0){ wrap.style.display = 'none'; return; }
+  wrap.style.display = '';
+  wrap.innerHTML = `<div class="streak-chip">🔥 ${streak.count}-day streak${streak.bestCount > streak.count ? ` &middot; best ${streak.bestCount}` : ''}</div>`;
+}
+
+/* Deterministic "random" index (0..length-1) seeded off a date string,
+   so every player sees the same Trick of the Day on the same date. */
+function seededIndex(dateStr, length){
+  if(length <= 0) return 0;
+  let hash = 0;
+  for(let i = 0; i < dateStr.length; i++){
+    hash = ((hash << 5) - hash + dateStr.charCodeAt(i)) | 0;
+  }
+  return Math.abs(hash) % length;
+}
+
+function updateTrickOfDay(){
+  const wrap = document.getElementById('trick-of-day-card');
+  if(!wrap) return;
+  const pool = allTrickPool(['ground', 'trampoline'], ['novice', 'beginner', 'intermediate', 'advanced']);
+  if(!pool.length){ wrap.style.display = 'none'; return; }
+  const today = todayString();
+  const trick = pool[seededIndex(today, pool.length)];
+  wrap.style.display = '';
+  wrap.innerHTML = `<div class="tod-label">Trick of the Day</div><div class="tod-name">${trick}</div><div class="tod-meta">Same trick for everyone today — go land it!</div>`;
+  wrap.onclick = () => { showToast(`Today's trick: ${trick}`); };
 }
 
 /* ============================================================
@@ -1397,6 +2243,9 @@ applyTheme();
 applyAccent();
 updateHomeStats();
 updateResumeUI();
+updateStreak();
+updateStreakUI();
+updateTrickOfDay();
 
 // --- Sound (synthesized, no audio files needed) + haptics ---
 let audioCtx = null;
@@ -1518,7 +2367,7 @@ let state = {
   gameType: null,      // 'flip' | 'addon' | 'timeattack'
   mode: null,          // 'solo' | 'multi'
   category: null,      // 'ground' | 'trampoline'
-  difficulty: null,    // 'novice' | 'beginner' | 'intermediate'
+  difficulty: null,    // 'novice' | 'beginner' | 'intermediate' | 'advanced'
   players: [],         // [{name, letters:0, out:false, landedCount:0}]
   roundStartIndex: 0,  // which player's turn starts this round's rotation (multiplayer FLIP)
   attemptQueue: [],    // indices of players still to attempt current trick
@@ -1534,12 +2383,22 @@ let state = {
   taTimerId: null,
   taOrder: [],         // player indices in turn order (multiplayer)
   taTurnIndex: 0,
-  taResults: []        // [{idx, name, count}] filled in as each player finishes their turn
+  taResults: [],       // [{idx, name, count}] filled in as each player finishes their turn
+  // Tournament bracket specific (kept isolated from the fields above so
+  // a bracket match never touches regular FLIP/Add-On/Time Attack state):
+  bracket: {
+    playerNames: [],   // the 4 or 8 names entered on the setup screen
+    totalRounds: 0,     // log2(playerNames.length) — used to label Semifinal/Final
+    rounds: [],        // array of rounds; each round is an array of {p1, p2, winner}
+    roundIndex: 0,
+    matchIndex: 0,
+    match: null        // live match state: {players:[{name,letters,out}], attemptQueue, roundStartIndex, usedTricks, currentTrick}
+  }
 };
 
 function totalFlowSteps(){
   if(state.gameType === 'addon'){
-    let total = 2; // game type, mode (no category/difficulty for Add-On)
+    let total = 3; // game type, mode, filters (no category/difficulty for Add-On)
     if(state.mode === 'multi') total += 1; // players screen
     return total;
   }
@@ -1554,7 +2413,8 @@ const STEP_BADGE_MAP = {
   'screen-mode': 2,
   'screen-category': 3,
   'screen-difficulty': 4,
-  'screen-timelimit': 5
+  'screen-timelimit': 5,
+  'screen-addon-filters': 3
 };
 
 function updateStepBadge(id){
@@ -1569,7 +2429,9 @@ function updateStepBadge(id){
 function go(id){
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
-  if(id === 'screen-title') updateHomeStats();
+  if(id === 'screen-title'){ updateHomeStats(); updateStreakUI(); }
+  if(id === 'screen-difficulty') updateDifficultyFilterUI();
+  if(id === 'screen-addon-filters') updateAddonFilterUI();
   updateStepBadge(id);
 }
 
@@ -1600,9 +2462,15 @@ function updateQtFilterUI(){
   document.querySelectorAll('.qt-diff-btn').forEach(b => {
     b.classList.toggle('active', qtFilters.diffs.includes(b.dataset.diff));
   });
+  document.getElementById('qt-only-front').checked = qtFilters.onlyFront;
+  document.getElementById('qt-only-side').checked = qtFilters.onlySide;
+  document.getElementById('qt-only-back').checked = qtFilters.onlyBack;
   document.getElementById('qt-no-doubles').checked = qtFilters.noDoubles;
   document.getElementById('qt-no-twist').checked = qtFilters.noTwistOverFull;
+  document.getElementById('qt-no-twist-all').checked = qtFilters.noTwistAtAll;
   document.getElementById('qt-no-wall').checked = qtFilters.noWallTricks;
+  document.getElementById('qt-no-vaults').checked = qtFilters.noVaults;
+  document.getElementById('qt-no-combos').checked = qtFilters.noCombos;
   document.getElementById('qt-no-repeats').checked = qtFilters.noRepeats;
   updateQtCount();
 }
@@ -1668,7 +2536,86 @@ const CHALLENGES = [
   "Best style", "Everyone does the same trick", "Winner picks next trick",
   "Loser gets a letter", "Redo if sketchy", "Must call trick before doing it"
 ];
-const DIFFICULTY_LABELS = ["Novice", "Beginner", "Intermediate"];
+const DIFFICULTY_LABELS = ["Novice", "Beginner", "Intermediate", "Advanced"];
+
+/* ============================================================
+   PLAYER PROFILES: a persistent named roster the player builds
+   once, then reuses as quick-pick chips across Multiplayer,
+   Wheel Spin, and Tournament setup. Stored the same safe way as
+   everything else in this file.
+   ============================================================ */
+function loadProfiles(){
+  try{
+    const raw = localStorage.getItem('flipProfiles');
+    if(raw){
+      const arr = JSON.parse(raw);
+      if(Array.isArray(arr)) return arr;
+    }
+  }catch(e){ /* storage unavailable, use defaults */ }
+  return [];
+}
+function saveProfiles(){
+  try{ localStorage.setItem('flipProfiles', JSON.stringify(profiles)); }catch(e){ /* ignore */ }
+}
+
+let profiles = loadProfiles();
+
+function addProfileFromInput(){
+  const input = document.getElementById('profile-name-input');
+  const name = input.value.trim();
+  if(!name){ showToast('Enter a name first'); return; }
+  if(profiles.includes(name)){ showToast('Already saved'); input.value = ''; return; }
+  profiles.push(name);
+  saveProfiles();
+  input.value = '';
+  renderProfilesList();
+}
+function removeProfile(name){
+  profiles = profiles.filter(p => p !== name);
+  saveProfiles();
+  renderProfilesList();
+}
+function renderProfilesList(){
+  const wrap = document.getElementById('profiles-list');
+  const emptyNote = document.getElementById('profiles-empty-note');
+  if(!wrap) return;
+  if(!profiles.length){
+    wrap.innerHTML = '';
+    if(emptyNote) emptyNote.style.display = 'block';
+    return;
+  }
+  if(emptyNote) emptyNote.style.display = 'none';
+  wrap.innerHTML = profiles.map(name => {
+    const ts = (stats.trickStats && Object.keys(stats.trickStats).length) ? '' : '';
+    const wins = stats.wins && stats.wins[name] ? stats.wins[name] : 0;
+    return `
+    <div class="profile-card">
+      <div class="pc-info">
+        <div class="pc-nm">${name}</div>
+        <div class="pc-stat">${wins} win${wins === 1 ? '' : 's'} recorded</div>
+      </div>
+      <button class="remove-x" onclick="removeProfile('${name.replace(/'/g, "\\'")}')">×</button>
+    </div>`;
+  }).join('');
+}
+function openProfiles(){
+  renderProfilesList();
+  go('screen-profiles');
+}
+/* Renders quick-pick chips for a saved-profile list into any container;
+   clicking a chip calls window[onPickFnName](name) so each screen decides
+   what to do with it (fill next empty field, toggle selection, etc).
+   Takes a function NAME (string), not a function reference, so the
+   resulting onclick markup stays a plain global call — no closures to
+   lose when the string gets re-parsed as an inline handler. */
+function renderProfileChips(containerId, onPickFnName){
+  const wrap = document.getElementById(containerId);
+  if(!wrap) return;
+  if(!profiles.length){ wrap.innerHTML = ''; return; }
+  wrap.innerHTML = `<div class="profile-chip-row">${profiles.map(name =>
+    `<div class="profile-chip" onclick="${onPickFnName}('${name.replace(/'/g, "\\'")}')">${name}</div>`
+  ).join('')}</div>`;
+}
 
 function loadWheelRoster(){
   try{
@@ -1677,6 +2624,7 @@ function loadWheelRoster(){
       const arr = JSON.parse(raw);
       if(Array.isArray(arr) && arr.length) return arr;
     }
+    if(profiles.length) return profiles.slice(0, 2);
   }catch(e){ /* storage unavailable, use defaults */ }
   return ['Player 1', 'Player 2'];
 }
@@ -1696,7 +2644,17 @@ function openWheelSpin(){
   const btn = document.getElementById('wheel-spin-btn');
   btn.disabled = false;
   btn.textContent = '🎡 Spin';
+  renderProfileChips('wheel-profile-chips', 'pickWheelProfile');
   go('screen-wheel');
+}
+
+/* Fills the first empty #wheel-player-fields input with this profile
+   name, or adds a fresh field for it if every current field is filled. */
+function pickWheelProfile(name){
+  const inputs = Array.from(document.querySelectorAll('#wheel-player-fields input'));
+  const empty = inputs.find(i => !i.value.trim());
+  if(empty){ empty.value = name; persistWheelRoster(); }
+  else { addWheelPlayerField(name); persistWheelRoster(); }
 }
 
 function addWheelPlayerField(prefill){
@@ -1770,6 +2728,10 @@ function spinWheel(){
 
 function setGameType(type){
   state.gameType = type;
+  if(type === 'tournament'){
+    openBracketSetup();
+    return;
+  }
   go('screen-mode');
 }
 
@@ -1778,7 +2740,7 @@ function setMode(mode){
   if(state.gameType === 'addon'){
     state.category = null;
     state.difficulty = null;
-    goToPlayersOrStart();
+    go('screen-addon-filters');
     return;
   }
   go('screen-category');
@@ -1790,7 +2752,16 @@ function setCategory(cat){
 }
 
 function setDifficulty(diff){
+  const available = filteredTrickList(state.category, diff);
+  if(available.length === 0){
+    showToast(`No tricks match your filters for ${state.category} · ${diff}`);
+    return;
+  }
   state.difficulty = diff;
+  if(state.gameType === 'tournament'){
+    beginBracketTournament();
+    return;
+  }
   if(state.gameType === 'timeattack'){
     go('screen-timelimit');
     return;
@@ -1811,8 +2782,18 @@ function goToPlayersOrStart(){
     document.getElementById('player-fields').innerHTML = '';
     addPlayerField();
     addPlayerField();
+    renderProfileChips('players-profile-chips', 'pickPlayerProfile');
     go('screen-players');
   }
+}
+
+/* Fills the first empty #player-fields input with this profile name,
+   or adds a fresh field for it if every current field is already filled. */
+function pickPlayerProfile(name){
+  const inputs = Array.from(document.querySelectorAll('#player-fields input'));
+  const empty = inputs.find(i => !i.value.trim());
+  if(empty){ empty.value = name; }
+  else { addPlayerField(name); }
 }
 
 function startSelectedGame(){
@@ -1825,12 +2806,13 @@ function startSelectedGame(){
   }
 }
 
-function addPlayerField(){
+function addPlayerField(prefill){
   const wrap = document.getElementById('player-fields');
   const n = wrap.children.length + 1;
   const row = document.createElement('div');
   row.className = 'player-row';
-  row.innerHTML = `<input type="text" placeholder="Player ${n} name" maxlength="16">
+  const safeVal = prefill ? String(prefill).replace(/"/g, '&quot;') : '';
+  row.innerHTML = `<input type="text" placeholder="Player ${n} name" maxlength="16" value="${safeVal}">
     <button class="remove-x" onclick="this.parentElement.remove()">×</button>`;
   wrap.appendChild(row);
 }
@@ -1871,7 +2853,15 @@ function activePlayers(){
 }
 
 function drawTrick(){
-  const list = state.gameType === 'addon' ? ADDON_TRICKS : TRICKS[state.category][state.difficulty];
+  let list = state.gameType === 'addon' ? filteredAddonTricks() : filteredTrickList(state.category, state.difficulty);
+  if(!list.length){
+    // Safety net: filters should never be able to empty a pool mid-game
+    // (setDifficulty/continueAddonSetup already check before the game
+    // starts), but if something changes out from under an in-progress
+    // game, fall back to the unfiltered list rather than ever drawing
+    // "undefined".
+    list = state.gameType === 'addon' ? ADDON_TRICKS : ((TRICKS[state.category] && TRICKS[state.category][state.difficulty]) || []);
+  }
   let pool = list.filter(t => !state.usedTricks.includes(t));
   if(pool.length === 0){ pool = list; state.usedTricks = []; }
   const trick = pool[Math.floor(Math.random() * pool.length)];
@@ -1917,6 +2907,7 @@ function advanceRound(){
 }
 
 function recordAttempt(landed){
+  recordTrickStat(state.currentTrick, landed);
   if(state.mode === 'solo'){
     const p = state.players[0];
     if(landed){
@@ -2121,6 +3112,9 @@ function renderAddonPlayers(){
 }
 
 function addonAttempt(landed){
+  // Add-On tests the whole chain at once, so the most meaningful trick
+  // to attribute this attempt to is the newest one just appended.
+  recordTrickStat(state.sequence[state.sequence.length - 1], landed);
   if(state.mode === 'solo'){
     if(landed){
       playSuccess();
@@ -2291,6 +3285,7 @@ function taNextTrick(){
 
 function taAttempt(landed){
   if(state.taRemaining <= 0) return;
+  recordTrickStat(state.currentTrick, landed);
   if(landed){
     playSuccess();
     state.taCount++;
@@ -2385,6 +3380,297 @@ function finishTimeAttackMultiplayer(){
 
   renderScoreboard();
   go('screen-winner');
+}
+
+/* ============================================================
+   TOURNAMENT BRACKET: single-elimination mode for exactly 4 or 8
+   players. Builds a bracket from the entered names (randomly
+   seeded), then plays each match as its own isolated 2-player Game
+   of FLIP using state.bracket.match — kept fully separate from
+   state.players so a bracket match never touches (or gets touched
+   by) the regular multiplayer/solo FLIP code above.
+   ============================================================ */
+function shuffleArray(arr){
+  const a = arr.slice();
+  for(let i = a.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    const tmp = a[i]; a[i] = a[j]; a[j] = tmp;
+  }
+  return a;
+}
+
+function openBracketSetup(){
+  const wrap = document.getElementById('bracket-player-fields');
+  wrap.innerHTML = '';
+  addBracketPlayerField();
+  addBracketPlayerField();
+  addBracketPlayerField();
+  addBracketPlayerField();
+  renderProfileChips('bracket-profile-chips', 'pickBracketProfile');
+  go('screen-bracket-setup');
+}
+
+function addBracketPlayerField(prefill){
+  const wrap = document.getElementById('bracket-player-fields');
+  const n = wrap.children.length + 1;
+  const row = document.createElement('div');
+  row.className = 'player-row';
+  const safeVal = prefill ? String(prefill).replace(/"/g, '&quot;') : '';
+  row.innerHTML = `<input type="text" placeholder="Player ${n} name" maxlength="16" value="${safeVal}">
+    <button class="remove-x" onclick="this.parentElement.remove()">×</button>`;
+  wrap.appendChild(row);
+}
+
+/* Fills the first empty #bracket-player-fields input with this profile
+   name, or adds a fresh field for it if every current field is filled. */
+function pickBracketProfile(name){
+  const inputs = Array.from(document.querySelectorAll('#bracket-player-fields input'));
+  const empty = inputs.find(i => !i.value.trim());
+  if(empty){ empty.value = name; }
+  else { addBracketPlayerField(name); }
+}
+
+function startBracketSetup(){
+  const inputs = document.querySelectorAll('#bracket-player-fields input');
+  const names = Array.from(inputs).map(i => i.value.trim()).filter(Boolean);
+  if(names.length !== 4 && names.length !== 8){
+    showToast('Enter exactly 4 or 8 player names');
+    return;
+  }
+  const unique = new Set(names.map(n => n.toLowerCase()));
+  if(unique.size !== names.length){
+    showToast('Player names must be unique');
+    return;
+  }
+  state.bracket.playerNames = names;
+  state.mode = 'multi';
+  go('screen-category');
+}
+
+function beginBracketTournament(){
+  const names = shuffleArray(state.bracket.playerNames);
+  const round1 = [];
+  for(let i = 0; i < names.length; i += 2){
+    round1.push({ p1: names[i], p2: names[i + 1], winner: null });
+  }
+  state.bracket.totalRounds = Math.round(Math.log2(names.length));
+  state.bracket.rounds = [round1];
+  state.bracket.roundIndex = 0;
+  state.bracket.matchIndex = 0;
+  document.getElementById('bracket-game-badge').textContent =
+    `TOURNAMENT · ${state.category.toUpperCase()} · ${state.difficulty.toUpperCase()}`;
+  advanceBracketTournament();
+}
+
+function currentBracketMatch(){
+  return state.bracket.rounds[state.bracket.roundIndex][state.bracket.matchIndex];
+}
+
+/* The single hub that moves the tournament forward: starts the next
+   undecided match in the current round, or — once a round is fully
+   decided — builds the next round from that round's winners, or (once
+   only one winner remains) crowns the champion. */
+function advanceBracketTournament(){
+  const rounds = state.bracket.rounds;
+  const round = rounds[state.bracket.roundIndex];
+  if(state.bracket.matchIndex < round.length){
+    startBracketMatch();
+    return;
+  }
+  const winners = round.map(m => m.winner);
+  if(winners.length === 1){
+    finishBracketTournament(winners[0]);
+    return;
+  }
+  const nextRound = [];
+  for(let i = 0; i < winners.length; i += 2){
+    nextRound.push({ p1: winners[i], p2: winners[i + 1], winner: null });
+  }
+  rounds.push(nextRound);
+  state.bracket.roundIndex++;
+  state.bracket.matchIndex = 0;
+  startBracketMatch();
+}
+
+function startBracketMatch(){
+  const m = currentBracketMatch();
+  state.bracket.match = {
+    players: [
+      { name: m.p1, letters: 0, out: false },
+      { name: m.p2, letters: 0, out: false }
+    ],
+    attemptQueue: [],
+    roundStartIndex: 0,
+    usedTricks: [],
+    currentTrick: null
+  };
+  const round = state.bracket.rounds[state.bracket.roundIndex];
+  document.getElementById('bracket-round-line').textContent =
+    `Round ${state.bracket.roundIndex + 1} · Match ${state.bracket.matchIndex + 1} of ${round.length}`;
+  go('screen-bracket');
+  startBracketRound();
+  renderBracketProgress();
+}
+
+function bracketDrawTrick(){
+  const match = state.bracket.match;
+  let list = filteredTrickList(state.category, state.difficulty);
+  if(!list.length){
+    // Safety net, same reasoning as drawTrick(): filters should never be
+    // able to empty a pool mid-match, but never draw "undefined" if they do.
+    list = (TRICKS[state.category] && TRICKS[state.category][state.difficulty]) || [];
+  }
+  let pool = list.filter(t => !match.usedTricks.includes(t));
+  if(pool.length === 0){ pool = list; match.usedTricks = []; }
+  const trick = pool[Math.floor(Math.random() * pool.length)];
+  match.usedTricks.push(trick);
+  return trick;
+}
+
+function bracketNewTrick(){
+  const trick = bracketDrawTrick();
+  state.bracket.match.currentTrick = trick;
+  document.getElementById('bracket-trick-name').textContent = trick;
+  document.getElementById('bracket-trick-meta').textContent = `${state.category} · ${state.difficulty}`;
+}
+
+function startBracketRound(){
+  const match = state.bracket.match;
+  const n = match.players.length;
+  match.attemptQueue = [];
+  for(let i = 0; i < n; i++){
+    const idx = (match.roundStartIndex + i) % n;
+    if(!match.players[idx].out) match.attemptQueue.push(idx);
+  }
+  bracketNewTrick();
+  showBracketNextAttempt();
+}
+
+function showBracketNextAttempt(){
+  const match = state.bracket.match;
+  const idx = match.attemptQueue[0];
+  document.getElementById('bracket-attempt-controls').style.display = '';
+  document.getElementById('bracket-attempt-name').textContent = match.players[idx].name;
+  renderBracketPlayers();
+}
+
+function renderBracketPlayers(){
+  const panel = document.getElementById('bracket-players-panel');
+  panel.innerHTML = '';
+  const match = state.bracket.match;
+  const currentIdx = match.attemptQueue.length ? match.attemptQueue[0] : -1;
+  match.players.forEach((p, i) => {
+    const chip = document.createElement('div');
+    chip.className = 'player-chip' + (i === currentIdx ? ' current' : '') + (p.out ? ' out' : '');
+    const letters = FLIP_LETTERS.map((L, li) =>
+      `<div class="letter${li < p.letters ? ' lit' : ''}">${L}</div>`
+    ).join('');
+    chip.innerHTML = `<div class="pc-name">${p.name}${p.out ? ' (out)' : ''}</div><div class="pc-letters">${letters}</div>`;
+    panel.appendChild(chip);
+  });
+}
+
+function bracketRecordAttempt(landed){
+  const match = state.bracket.match;
+  const idx = match.attemptQueue.shift();
+  recordTrickStat(match.currentTrick, landed);
+
+  if(landed){
+    playSuccess();
+  } else {
+    playFail();
+    const p = match.players[idx];
+    p.letters++;
+    if(p.letters >= FLIP_LETTERS.length){
+      p.out = true;
+      playElim();
+      showToast(`${p.name} spelled FLIP — out!`);
+    } else {
+      showToast(`${p.name} takes a letter: ${FLIP_LETTERS[p.letters - 1]}`);
+    }
+  }
+
+  const remaining = match.players.filter(p => !p.out);
+  if(remaining.length === 1){
+    renderBracketPlayers();
+    finishBracketMatch(remaining[0].name);
+    return;
+  }
+  renderBracketPlayers();
+  if(match.attemptQueue.length === 0){
+    advanceBracketRound();
+  } else {
+    showBracketNextAttempt();
+  }
+}
+
+function advanceBracketRound(){
+  const match = state.bracket.match;
+  document.getElementById('bracket-attempt-controls').style.display = 'none';
+  let next = (match.roundStartIndex + 1) % match.players.length;
+  while(match.players[next].out){
+    next = (next + 1) % match.players.length;
+  }
+  match.roundStartIndex = next;
+  startBracketRound();
+}
+
+function finishBracketMatch(winnerName){
+  currentBracketMatch().winner = winnerName;
+  stats.wins[winnerName] = (stats.wins[winnerName] || 0) + 1;
+  saveStats();
+  document.getElementById('bracket-attempt-controls').style.display = 'none';
+  showToast(`${winnerName} advances!`);
+  playWin();
+  launchConfetti();
+  renderBracketProgress();
+  setTimeout(() => {
+    state.bracket.matchIndex++;
+    advanceBracketTournament();
+  }, 1400);
+}
+
+function finishBracketTournament(championName){
+  clearSavedGame();
+  document.getElementById('bracket-champion-name').textContent = championName;
+  renderBracketFinalResults();
+  playWin();
+  launchConfetti();
+  go('screen-bracket-champion');
+}
+
+function renderBracketFinalResults(){
+  const panel = document.getElementById('bracket-final-results');
+  panel.innerHTML = '';
+  const rows = state.bracket.playerNames
+    .map(name => ({ name, wins: stats.wins[name] || 0 }))
+    .sort((a, b) => b.wins - a.wins);
+  const topWins = rows.length ? rows[0].wins : 0;
+  rows.forEach(r => {
+    const row = document.createElement('div');
+    row.className = 'score-row' + (r.wins === topWins && topWins > 0 ? ' top' : '');
+    row.innerHTML = `<span class="score-name">${r.name}</span><span class="score-count">${r.wins} win${r.wins === 1 ? '' : 's'}</span>`;
+    panel.appendChild(row);
+  });
+}
+
+function renderBracketProgress(){
+  const wrap = document.getElementById('bracket-progress');
+  const total = state.bracket.totalRounds;
+  wrap.innerHTML = state.bracket.rounds.map((round, ri) => {
+    const remaining = total - ri;
+    const label = remaining === 1 ? 'Final' : remaining === 2 ? 'Semifinal' : `Round ${ri + 1}`;
+    const matchesHtml = round.map((m, mi) => {
+      const isCurrent = ri === state.bracket.roundIndex && mi === state.bracket.matchIndex && !m.winner;
+      const p1Class = m.winner ? (m.winner === m.p1 ? 'winner' : 'loser') : '';
+      const p2Class = m.winner ? (m.winner === m.p2 ? 'winner' : 'loser') : '';
+      return `<div class="bracket-match${isCurrent ? ' current' : ''}">
+        <div class="bm-side ${p1Class}">${m.p1}</div>
+        <div class="bm-side ${p2Class}">${m.p2}</div>
+      </div>`;
+    }).join('');
+    return `<div class="bracket-round"><div class="bracket-round-label">${label}</div>${matchesHtml}</div>`;
+  }).join('');
 }
 
 function confirmQuit(){
