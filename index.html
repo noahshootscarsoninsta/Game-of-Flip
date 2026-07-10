@@ -483,6 +483,8 @@
     font-size:16px;
     font-weight:800;
     text-align:right;
+    min-width:0;
+    word-break:break-word;
   }
   .wheel-reel-value.spinning{ color:var(--accent2); animation:wheelPulse .12s linear infinite alternate; }
   @keyframes wheelPulse{ from{opacity:.5;} to{opacity:1;} }
@@ -631,6 +633,65 @@
     padding:14px 16px;
     margin-bottom:12px;
   }
+
+  /* Combo Settings / Manage Tricks / Trick Editor */
+  .chip-select{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
+  .chip-select button{
+    flex:1 1 auto;
+    min-width:64px;
+    padding:11px 10px;
+    border-radius:10px;
+    border:1px solid var(--border-med);
+    background:var(--bg2);
+    color:var(--text);
+    font-weight:700;
+    font-size:13px;
+    cursor:pointer;
+  }
+  .chip-select button.active{ border-color:var(--accent); background:var(--accent); color:#0a0a12; }
+  .trick-mgr-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    background:var(--card);
+    border:1px solid var(--border-soft);
+    border-radius:14px;
+    padding:12px 14px;
+    margin-bottom:8px;
+  }
+  .trick-mgr-row.disabled{ opacity:.5; }
+  .trick-mgr-info{ display:flex; flex-direction:column; gap:2px; min-width:0; }
+  .trick-mgr-name{ font-weight:800; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .trick-mgr-meta{ font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; }
+  .trick-mgr-actions{ display:flex; gap:6px; align-items:center; flex-shrink:0; }
+  .trick-mgr-star{ font-size:18px; cursor:pointer; background:none; border:none; padding:2px; line-height:1; }
+  .trick-mgr-icon-btn{
+    width:30px; height:30px; border-radius:8px; border:1px solid var(--border-med);
+    background:var(--bg2); color:var(--text); font-size:13px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; padding:0;
+  }
+  .autocomplete-wrap{ position:relative; }
+  .autocomplete-list{
+    position:absolute; left:0; right:0; top:calc(100% + 4px); z-index:20;
+    background:var(--bg2); border:1px solid var(--border-med); border-radius:12px;
+    max-height:220px; overflow-y:auto; box-shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  .autocomplete-item{ padding:12px 16px; font-size:14px; cursor:pointer; border-bottom:1px solid var(--border-soft); }
+  .autocomplete-item:last-child{ border-bottom:none; }
+  .autocomplete-item:active{ background:var(--card); }
+  .autocomplete-item .ai-meta{ font-size:11px; color:var(--muted); margin-top:2px; }
+  .quick-add-chip-row{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
+  .quick-add-chip{
+    background:var(--chip-bg); border:1px solid var(--border-med); border-radius:999px;
+    padding:7px 13px; font-size:12px; font-weight:700; cursor:pointer;
+  }
+  .trick-name.combo-text{ font-size:16px; line-height:1.35; }
+  textarea.notes-input{
+    width:100%; min-height:70px; padding:12px 14px; border-radius:12px;
+    border:1px solid var(--border-med); background:var(--bg2); color:var(--text);
+    font-family:inherit; font-size:14px; resize:vertical;
+  }
 </style>
 </head>
 <body>
@@ -656,6 +717,7 @@
     <button class="btn btn-outline" onclick="openQuickTrick()">🎲 Quick Trick</button>
     <button class="btn btn-outline" onclick="openWheelSpin()">🎡 Wheel Spin Mode</button>
     <button class="btn btn-outline" onclick="openProfiles()">👤 Players</button>
+    <button class="btn btn-outline" onclick="openManageTricks('screen-title')">📋 Manage Tricks</button>
     <div class="streak-row" id="streak-row" style="display:none;"></div>
     <div class="trick-of-day" id="trick-of-day-card" style="display:none;"></div>
     <div class="home-stats" id="home-stats" onclick="openSettings('screen-title')"></div>
@@ -744,26 +806,15 @@
       </label>
     </div>
 
-    <div class="section-label" style="font-size:11px;">Twisting — combine any of these</div>
-    <div class="switch-row">
-      <div>
-        <div class="label">No twisting over full</div>
-        <div class="sub">Caps twists at one full (360°).</div>
-      </div>
-      <label class="switch">
-        <input type="checkbox" id="addon-no-twist" onchange="toggleDiffFlag('noTwistOverFull', this)">
-        <span class="slider"></span>
-      </label>
-    </div>
-    <div class="switch-row">
-      <div>
-        <div class="label">No twisting, period</div>
-        <div class="sub">Straight flips only — zero twist, at all.</div>
-      </div>
-      <label class="switch">
-        <input type="checkbox" id="addon-no-twist-all" onchange="toggleDiffFlag('noTwistAtAll', this)">
-        <span class="slider"></span>
-      </label>
+    <div class="section-label" style="font-size:11px;">Max twist — pick the highest level allowed</div>
+    <div class="sub" style="margin:-2px 0 8px;">For newer flyers, pick None or Half. More options than a simple on/off — dial it in exactly.</div>
+    <div class="chip-select" id="addon-twist-chips">
+      <button data-twist="0" onclick="setDiffTwistCap(0)">None</button>
+      <button data-twist="0.5" onclick="setDiffTwistCap(0.5)">Half</button>
+      <button data-twist="1" onclick="setDiffTwistCap(1)">Full</button>
+      <button data-twist="1.5" onclick="setDiffTwistCap(1.5)">1.5</button>
+      <button data-twist="2" onclick="setDiffTwistCap(2)">Double</button>
+      <button data-twist="any" onclick="setDiffTwistCap(null)">Any</button>
     </div>
 
     <div class="section-label" style="font-size:11px;">Extras</div>
@@ -804,6 +855,16 @@
       </div>
       <label class="switch">
         <input type="checkbox" id="addon-no-combos" onchange="toggleDiffFlag('noCombos', this)">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="switch-row">
+      <div>
+        <div class="label">Favorites only</div>
+        <div class="sub">Only draw tricks you've starred as favorites.</div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="addon-favorites-only" onchange="toggleDiffFlag('favoritesOnly', this)">
         <span class="slider"></span>
       </label>
     </div>
@@ -880,26 +941,15 @@
       </label>
     </div>
 
-    <div class="section-label" style="font-size:11px;">Twisting — combine any of these</div>
-    <div class="switch-row">
-      <div>
-        <div class="label">No twisting over full</div>
-        <div class="sub">Caps twists at one full (360°).</div>
-      </div>
-      <label class="switch">
-        <input type="checkbox" id="diff-no-twist" onchange="toggleDiffFlag('noTwistOverFull', this)">
-        <span class="slider"></span>
-      </label>
-    </div>
-    <div class="switch-row">
-      <div>
-        <div class="label">No twisting, period</div>
-        <div class="sub">Straight flips only — zero twist, at all.</div>
-      </div>
-      <label class="switch">
-        <input type="checkbox" id="diff-no-twist-all" onchange="toggleDiffFlag('noTwistAtAll', this)">
-        <span class="slider"></span>
-      </label>
+    <div class="section-label" style="font-size:11px;">Max twist — pick the highest level allowed</div>
+    <div class="sub" style="margin:-2px 0 8px;">For newer flyers, pick None or Half. More options than a simple on/off — dial it in exactly.</div>
+    <div class="chip-select" id="diff-twist-chips">
+      <button data-twist="0" onclick="setDiffTwistCap(0)">None</button>
+      <button data-twist="0.5" onclick="setDiffTwistCap(0.5)">Half</button>
+      <button data-twist="1" onclick="setDiffTwistCap(1)">Full</button>
+      <button data-twist="1.5" onclick="setDiffTwistCap(1.5)">1.5</button>
+      <button data-twist="2" onclick="setDiffTwistCap(2)">Double</button>
+      <button data-twist="any" onclick="setDiffTwistCap(null)">Any</button>
     </div>
 
     <div class="section-label" style="font-size:11px;">Extras</div>
@@ -942,6 +992,25 @@
         <input type="checkbox" id="diff-no-combos" onchange="toggleDiffFlag('noCombos', this)">
         <span class="slider"></span>
       </label>
+    </div>
+    <div class="switch-row">
+      <div>
+        <div class="label">Favorites only</div>
+        <div class="sub">Only draw tricks you've starred as favorites.</div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="diff-favorites-only" onchange="toggleDiffFlag('favoritesOnly', this)">
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <div class="section-label" style="font-size:11px;">Combo Tricks</div>
+    <div class="reset-row">
+      <div>
+        <div class="label">Smart combo tricks</div>
+        <div class="sub" id="diff-combo-summary">Off</div>
+      </div>
+      <button class="btn-outline" style="width:auto; padding:10px 14px; border-radius:10px; font-size:13px; white-space:nowrap;" onclick="openComboSettings('screen-difficulty');">Open</button>
     </div>
   </div>
 
@@ -1189,26 +1258,15 @@
       </label>
     </div>
 
-    <div class="section-label" style="font-size:11px;">Twisting — combine any of these</div>
-    <div class="switch-row">
-      <div>
-        <div class="label">No twisting over full</div>
-        <div class="sub">Caps twists at one full (360°).</div>
-      </div>
-      <label class="switch">
-        <input type="checkbox" id="qt-no-twist" onchange="toggleQtFlag('noTwistOverFull', this)">
-        <span class="slider"></span>
-      </label>
-    </div>
-    <div class="switch-row">
-      <div>
-        <div class="label">No twisting, period</div>
-        <div class="sub">Straight flips only — zero twist, at all.</div>
-      </div>
-      <label class="switch">
-        <input type="checkbox" id="qt-no-twist-all" onchange="toggleQtFlag('noTwistAtAll', this)">
-        <span class="slider"></span>
-      </label>
+    <div class="section-label" style="font-size:11px;">Max twist — pick the highest level allowed</div>
+    <div class="sub" style="margin:-2px 0 8px;">For newer flyers, pick None or Half. More options than a simple on/off — dial it in exactly.</div>
+    <div class="chip-select" id="qt-twist-chips">
+      <button data-twist="0" onclick="setQtTwistCap(0)">None</button>
+      <button data-twist="0.5" onclick="setQtTwistCap(0.5)">Half</button>
+      <button data-twist="1" onclick="setQtTwistCap(1)">Full</button>
+      <button data-twist="1.5" onclick="setQtTwistCap(1.5)">1.5</button>
+      <button data-twist="2" onclick="setQtTwistCap(2)">Double</button>
+      <button data-twist="any" onclick="setQtTwistCap(null)">Any</button>
     </div>
 
     <div class="section-label" style="font-size:11px;">Extras</div>
@@ -1254,6 +1312,16 @@
     </div>
     <div class="switch-row">
       <div>
+        <div class="label">Favorites only</div>
+        <div class="sub">Only draw tricks you've starred as favorites.</div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="qt-favorites-only" onchange="toggleQtFlag('favoritesOnly', this)">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="switch-row">
+      <div>
         <div class="label">No repeats</div>
         <div class="sub">Won't draw the same trick twice in a row.</div>
       </div>
@@ -1261,6 +1329,15 @@
         <input type="checkbox" id="qt-no-repeats" onchange="toggleQtFlag('noRepeats', this)">
         <span class="slider"></span>
       </label>
+    </div>
+
+    <div class="section-label" style="font-size:11px;">Combo Tricks</div>
+    <div class="reset-row">
+      <div>
+        <div class="label">Smart combo tricks</div>
+        <div class="sub" id="qt-combo-summary">Off</div>
+      </div>
+      <button class="btn-outline" style="width:auto; padding:10px 14px; border-radius:10px; font-size:13px; white-space:nowrap;" onclick="openComboSettings('screen-quicktrick');">Open</button>
     </div>
 
     <div class="trick-card">
@@ -1271,6 +1348,207 @@
 
     <div class="spacer"></div>
     <button class="btn btn-primary" onclick="drawQuickTrick()">🎲 Draw a Trick</button>
+  </div>
+
+  <!-- COMBO SETTINGS ("Allow Combo Tricks") -->
+  <div class="screen" id="screen-combo-settings">
+    <div class="top-nav">
+      <button class="back" onclick="go(settingsReturnTo)">← Back</button>
+      <span class="badge">COMBO TRICKS</span>
+    </div>
+    <h2 class="title">Smart Combo Tricks</h2>
+    <p class="subtitle">Automatically chains tricks already in your pool using realistic, hand-approved transitions — never a random walk.</p>
+
+    <div class="switch-row">
+      <div>
+        <div class="label">Allow combo tricks</div>
+        <div class="sub">Mixes generated multi-trick combos into every mode's draw pool.</div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="combo-enabled" onchange="toggleComboSetting('enabled', this)">
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <div class="switch-row">
+      <div>
+        <div class="label">Combo Only Mode</div>
+        <div class="sub">Every draw is a combo — no single tricks — in Game of FLIP, Quick Trick, Wheel Spin, Time Attack, and Tournament. (Game of Add-On is unaffected.)</div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="combo-only-mode" onchange="toggleComboSetting('comboOnly', this)">
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <div class="section-label" style="margin-top:14px;">Maximum combo length</div>
+    <div class="chip-select" id="combo-length-chips">
+      <button data-len="2" onclick="setComboMaxLength(2)">2 tricks</button>
+      <button data-len="3" onclick="setComboMaxLength(3)">3 tricks</button>
+      <button data-len="4" onclick="setComboMaxLength(4)">4 tricks</button>
+    </div>
+
+    <div class="section-label" style="margin-top:14px;">Minimum combo length</div>
+    <div class="sub" style="margin:-2px 0 8px;">For players who always want a longer sequence — never just a quick 2-trick combo.</div>
+    <div class="chip-select" id="combo-min-length-chips">
+      <button data-len="2" onclick="setComboMinLength(2)">2 tricks</button>
+      <button data-len="3" onclick="setComboMinLength(3)">3 tricks</button>
+      <button data-len="4" onclick="setComboMinLength(4)">4 tricks</button>
+    </div>
+
+    <div class="switch-row">
+      <div>
+        <div class="label">Allow repeated tricks</div>
+        <div class="sub">Lets a trick repeat in its own combo (Backflip → Backflip).</div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="combo-allow-repeats" onchange="toggleComboSetting('allowRepeats', this)">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="switch-row">
+      <div>
+        <div class="label">Ground only</div>
+        <div class="sub">Only chain ground tricks together, even in modes that mix categories.</div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="combo-ground-only" onchange="toggleComboSetting('groundOnly', this)">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="switch-row">
+      <div>
+        <div class="label">Trampoline only</div>
+        <div class="sub">Only chain trampoline tricks together, even in modes that mix categories.</div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="combo-trampoline-only" onchange="toggleComboSetting('trampolineOnly', this)">
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <div class="placeholder-note" id="combo-settings-preview" style="margin-top:10px;">—</div>
+    <div class="spacer"></div>
+  </div>
+
+  <!-- MANAGE TRICKS (official DB browse/enable/favorite + custom tricks CRUD) -->
+  <div class="screen" id="screen-manage-tricks">
+    <div class="top-nav">
+      <button class="back" onclick="go(settingsReturnTo)">← Back</button>
+      <span class="badge">TRICKS</span>
+    </div>
+    <h2 class="title">Manage Tricks</h2>
+    <p class="subtitle">Search, favorite, or disable any trick. Create your own custom tricks below.</p>
+
+    <div class="field">
+      <input type="text" id="trick-mgr-search" placeholder="Search tricks…" oninput="renderTrickManagerList()">
+    </div>
+    <div class="chip-select" id="trick-mgr-scope-chips">
+      <button data-scope="all" class="active" onclick="setTrickMgrScope('all')">All</button>
+      <button data-scope="official" onclick="setTrickMgrScope('official')">Official</button>
+      <button data-scope="custom" onclick="setTrickMgrScope('custom')">Custom</button>
+      <button data-scope="favorites" onclick="setTrickMgrScope('favorites')">Favorites</button>
+      <button data-scope="disabled" onclick="setTrickMgrScope('disabled')">Disabled</button>
+    </div>
+
+    <div class="section-label">Quick-add from official list</div>
+    <div class="quick-add-chip-row">
+      <div class="quick-add-chip" onclick="quickAddCategory('ground')">Ground Tricks</div>
+      <div class="quick-add-chip" onclick="quickAddCategory('trampoline')">Trampoline Tricks</div>
+      <div class="quick-add-chip" onclick="quickAddCategory('wall')">Wall Tricks</div>
+      <div class="quick-add-chip" onclick="quickAddCategory('vault')">Vaults</div>
+    </div>
+
+    <button class="btn btn-outline" style="margin-bottom:14px;" onclick="openTrickEditor(null)">+ Create Custom Trick</button>
+
+    <div id="trick-mgr-list"></div>
+    <div class="placeholder-note" id="trick-mgr-empty-note" style="display:none;">No tricks match.</div>
+    <div class="spacer"></div>
+  </div>
+
+  <!-- QUICK-ADD PICKER (category browse -> tap to clone into custom list) -->
+  <div class="screen" id="screen-quickadd-picker">
+    <div class="top-nav">
+      <button class="back" onclick="go('screen-manage-tricks')">← Back</button>
+      <span class="badge" id="quickadd-picker-badge">QUICK ADD</span>
+    </div>
+    <h2 class="title" id="quickadd-picker-title">Tricks</h2>
+    <p class="subtitle">Tap one to add it to your custom list, then edit it if you want.</p>
+    <div id="quickadd-picker-list"></div>
+    <div class="spacer"></div>
+  </div>
+
+  <!-- TRICK EDITOR (create / edit a custom trick) -->
+  <div class="screen" id="screen-trick-editor">
+    <div class="top-nav">
+      <button class="back" onclick="go('screen-manage-tricks')">← Back</button>
+      <span class="badge" id="trick-editor-badge">NEW TRICK</span>
+    </div>
+    <h2 class="title" id="trick-editor-title">Create a trick</h2>
+
+    <div class="field autocomplete-wrap">
+      <input type="text" id="trick-editor-name" placeholder="Trick name" maxlength="60" autocomplete="off"
+        oninput="renderTrickNameAutocomplete()" onfocus="renderTrickNameAutocomplete()">
+      <div class="autocomplete-list" id="trick-editor-autocomplete" style="display:none;"></div>
+    </div>
+
+    <div class="section-label">Category</div>
+    <div class="chip-select" id="trick-editor-category-chips">
+      <button data-val="ground" onclick="setTrickEditorField('category','ground')">Ground</button>
+      <button data-val="trampoline" onclick="setTrickEditorField('category','trampoline')">Tramp</button>
+      <button data-val="wall" onclick="setTrickEditorField('category','wall')">Wall</button>
+      <button data-val="vault" onclick="setTrickEditorField('category','vault')">Vault</button>
+      <button data-val="other" onclick="setTrickEditorField('category','other')">Other</button>
+    </div>
+
+    <div class="section-label">Difficulty</div>
+    <div class="chip-select" id="trick-editor-difficulty-chips">
+      <button data-val="novice" onclick="setTrickEditorField('difficulty','novice')">Novice</button>
+      <button data-val="beginner" onclick="setTrickEditorField('difficulty','beginner')">Beginner</button>
+      <button data-val="intermediate" onclick="setTrickEditorField('difficulty','intermediate')">Intermediate</button>
+    </div>
+
+    <div class="section-label">Type</div>
+    <div class="chip-select" id="trick-editor-type-chips">
+      <button data-val="flip" onclick="setTrickEditorField('type','flip')">Flip</button>
+      <button data-val="twist" onclick="setTrickEditorField('type','twist')">Twist</button>
+      <button data-val="vault" onclick="setTrickEditorField('type','vault')">Vault</button>
+      <button data-val="drop" onclick="setTrickEditorField('type','drop')">Drop</button>
+      <button data-val="other" onclick="setTrickEditorField('type','other')">Other</button>
+    </div>
+
+    <div class="section-label">Notes (optional)</div>
+    <div class="field">
+      <textarea class="notes-input" id="trick-editor-notes" placeholder="Any personal notes about this trick…"></textarea>
+    </div>
+
+    <div class="switch-row">
+      <div>
+        <div class="label">Enabled</div>
+        <div class="sub">Turn off to keep this trick saved but out of every draw pool.</div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="trick-editor-enabled" checked onchange="setTrickEditorField('enabled', this.checked)">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="switch-row">
+      <div>
+        <div class="label">Favorite</div>
+        <div class="sub">Shows up when a mode's "Favorites only" filter is on.</div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="trick-editor-favorite" onchange="setTrickEditorField('favorite', this.checked)">
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <div class="spacer"></div>
+    <button class="btn btn-primary" onclick="saveTrickEditor()">Save Trick</button>
+    <div class="row" id="trick-editor-existing-actions" style="display:none; gap:10px;">
+      <button class="btn-outline" style="width:100%;" onclick="duplicateFromEditor()">Duplicate</button>
+      <button class="btn-outline" style="width:100%; border-color:var(--danger); color:var(--danger);" onclick="deleteFromEditor()">Delete</button>
+    </div>
   </div>
 
   <!-- WHEEL SPIN MODE -->
@@ -1474,6 +1752,8 @@
       <button class="btn-outline" style="width:auto; padding:10px 14px; border-radius:10px; font-size:13px; white-space:nowrap;" onclick="settingsReturnTo='screen-settings'; openTrickStats();">View</button>
     </div>
 
+    <div class="placeholder-note" style="margin-top:4px;">Manage &amp; custom tricks has moved to the home screen. Smart combo tricks now lives with the other filters on each mode's own filter screen (Game of FLIP / Time Attack / Tournament, and Quick Trick / Wheel Spin) — not here.</div>
+
     <div class="spacer"></div>
     <div class="placeholder-note">Settings save automatically on this device.</div>
   </div>
@@ -1575,6 +1855,698 @@ const ADDON_TRICKS = [
 const FLIP_LETTERS = ["F","L","I","P"];
 
 /* ============================================================
+   OFFICIAL MFX TRICK DATABASE — COMBO TRANSITION GRAPH
+   One entry per official trick name (built from TRICKS + ADDON_TRICKS
+   above). Each entry lists the tricks it can realistically lead into,
+   authored from tumbling/trampoline convention plus every explicit
+   example the combo feature was speced against (Roundoff → Back
+   Handspring → Backflip, Scoot Full → Cork, Webster → Backflip, etc —
+   all individually verified against this table before it was pasted
+   in here). Hand-authored "X + Y" tricks that already exist as their
+   own pool entries are intentionally excluded from this graph (empty
+   transitions, not a starter) — the generator only chains *atomic*
+   tricks, it never extends an existing manual combo further. Advanced
+   named multi-twist tricks (Randy/Miller/Adolph/Cody/Triple-prefixed/
+   Double Full family) are also intentionally isolated: those are each a
+   single flagship skill in real tumbling, not something freestyle-
+   chained with each other, so they stay reachable only as ordinary
+   standalone pool draws, never as a combo link.
+   ============================================================ */
+const OFFICIAL_COMBO_TRANSITIONS = {
+  "360 Dive Roll": ["Front Flip"],
+  "360 Jump": ["Barani"],
+  "Adolph": [],
+  "Adolph + Miller": [],
+  "Aerial": ["Side Flip","Backflip"],
+  "Arabian": ["Front Flip","Frontflip"],
+  "Arabian + Front Flip": [],
+  "Arabian Full": ["Front Flip"],
+  "Back Drop": ["Seat Drop","Back Drop to Feet"],
+  "Back Drop to Feet": ["Backflip"],
+  "Back Flip": ["Back Flip"],
+  "Back Full": ["Backflip"],
+  "Back Full + Backflip": [],
+  "Back Half": ["Back Full"],
+  "Back Half + Back Full": [],
+  "Back Handspring": ["Backflip","Back Handspring","Back Full","Cork"],
+  "Back Handspring + Backflip": [],
+  "Back Handspring Step-Out": ["Backflip"],
+  "Back Layout": ["Back Layout"],
+  "Back Roll to Handstand": [],
+  "Back Tuck": ["Back Tuck"],
+  "Backflip": ["Backflip"],
+  "Backflip + Back Full": [],
+  "Backflip + Frontflip": [],
+  "Backflip + Full In": [],
+  "Backflip + Rudy": [],
+  "Backflip + Side Flip": [],
+  "Ball Out": ["Ball Out"],
+  "Barani": ["Backflip"],
+  "Barani + Backflip": [],
+  "Barani + Frontflip": [],
+  "Barani Ball Out": [],
+  "Butt Drop": ["Seat Drop"],
+  "Cart Arabian": ["Front Flip"],
+  "Cart Full": ["Backflip"],
+  "Cart Randy": [],
+  "Cartwheel": ["Backflip","Side Flip","Roundoff"],
+  "Cartwheel (Opposite Side)": ["Backflip","Side Flip"],
+  "Cartwheel + Roundoff": [],
+  "Cheat Gainer": ["Cheat Gainer","Backflip","Back Flip"],
+  "Cody": [],
+  "Cody + Full In": [],
+  "Cork": ["Side Flip"],
+  "Cork + Side Flip": [],
+  "Cradle": ["Backflip"],
+  "Crash Dive": ["Crash Dive","Backflip","Back Flip"],
+  "Dash Vault": ["Front Roll"],
+  "Dive Roll": ["Front Flip","Front Roll","360 Dive Roll"],
+  "Dive Roll + Front Roll": [],
+  "Double Arabian": [],
+  "Double Backflip": ["Double Backflip"],
+  "Double Frontflip": ["Double Frontflip","Backflip","Back Flip"],
+  "Double Full": [],
+  "Double Full In": [],
+  "Double Full In + Half In": [],
+  "Double Side Flip": ["Double Side Flip","Backflip","Back Flip"],
+  "Front Drop": ["Seat Drop","Front Drop to Feet"],
+  "Front Drop to Feet": ["Front Flip"],
+  "Front Flip": ["Front Flip","Backflip","Back Flip"],
+  "Front Full": ["Front Flip","Frontflip"],
+  "Front Full + Frontflip": [],
+  "Front Handspring": ["Front Flip","Front Full","Arabian"],
+  "Front Handspring + Back Handspring": [],
+  "Front Layout": ["Front Layout","Backflip","Back Flip"],
+  "Front Roll": ["Front Flip","Dive Roll"],
+  "Front Tuck": ["Front Tuck","Backflip","Back Flip"],
+  "Frontflip": ["Frontflip","Backflip","Back Flip"],
+  "Frontflip + Backflip": [],
+  "Frontflip + Front Full": [],
+  "Frontflip + Full In": [],
+  "Frontflip + Rudy": [],
+  "Full + Barani": [],
+  "Full In": ["Backflip"],
+  "Full In + Backflip": [],
+  "Gainer": ["Gainer","Backflip","Back Flip"],
+  "Gainer Pike": ["Gainer Pike","Backflip","Back Flip"],
+  "Half In": ["Backflip"],
+  "Handstand Forward Roll": [],
+  "Handstand Snap Down": [],
+  "Knee Back Half": ["Knee Backflip"],
+  "Knee Backflip": ["Knee Backflip"],
+  "Knee Drop": ["Seat Drop","Knee Drop to 180"],
+  "Knee Drop to 180": ["Seat Drop"],
+  "Knee Front Full": ["Knee Frontflip"],
+  "Knee Front Half": ["Knee Frontflip"],
+  "Knee Frontflip": ["Knee Frontflip","Backflip","Back Flip"],
+  "Knee Full": ["Knee Backflip"],
+  "Knee Rudy": ["Knee Backflip"],
+  "Knee Side Flip": ["Knee Side Flip","Backflip","Back Flip"],
+  "Knee Side Full": ["Knee Side Flip"],
+  "Kong": ["Front Roll"],
+  "Layout Backflip": ["Layout Backflip"],
+  "Layout Backflip + Layout Frontflip": [],
+  "Layout Frontflip": ["Layout Frontflip","Backflip","Back Flip"],
+  "Layout Side Flip": ["Layout Side Flip","Backflip","Back Flip"],
+  "Lazy Vault": ["Front Roll"],
+  "Miller": [],
+  "Miller + Randy": [],
+  "No-Hand Front Flip": ["No-Hand Front Flip","Backflip","Back Flip"],
+  "One-Hand Cartwheel": ["Backflip","Side Flip"],
+  "One-Hand Cartwheel (Opposite Hand)": ["Backflip","Side Flip"],
+  "Palm Flip": ["Palm Flip","Backflip","Back Flip"],
+  "Pike Back": ["Pike Back"],
+  "Pike Backflip": ["Pike Backflip"],
+  "Pike Backflip + Pike Frontflip": [],
+  "Pike Barani": ["Backflip"],
+  "Pike Front": ["Pike Front","Backflip","Back Flip"],
+  "Pike Frontflip": ["Pike Frontflip","Backflip","Back Flip"],
+  "Pike Jump": ["Front Flip"],
+  "Pike Side Flip": ["Pike Side Flip","Backflip","Back Flip"],
+  "Pike Side Full": ["Side Flip"],
+  "Punch Front": ["Punch Front","Backflip","Back Flip"],
+  "Randy": [],
+  "Randy + Rudy": [],
+  "Roundoff": ["Back Handspring","Backflip"],
+  "Roundoff + Back Handspring": [],
+  "Roundoff + Backflip": [],
+  "Rudy": ["Backflip"],
+  "Rudy + Barani": [],
+  "Running Front Flip": ["Running Front Flip","Backflip","Back Flip"],
+  "Running Side Flip": ["Running Side Flip","Backflip","Back Flip"],
+  "Safety Vault": ["Front Roll"],
+  "Scoot Arabian": ["Backflip"],
+  "Scoot Cork": ["Side Flip"],
+  "Scoot Full": ["Cork"],
+  "Scoot Randy": [],
+  "Seat Drop": ["Back Drop","Front Drop","Swivel Hips"],
+  "Seat Drop Half Turn": ["Seat Drop"],
+  "Seat Half Turn": ["Seat Drop"],
+  "Side Flip": ["Side Flip","Backflip","Back Flip"],
+  "Side Flip + Side Full": [],
+  "Side Flip Half Twist": ["Side Flip"],
+  "Side Full": ["Side Flip"],
+  "Side Full + Side Flip": [],
+  "Speed Vault": ["Front Roll"],
+  "Standing Arabian": ["Front Flip"],
+  "Standing Back Full": ["Backflip"],
+  "Standing Back Full + Backflip": [],
+  "Standing Backflip": ["Standing Backflip"],
+  "Standing Front Flip": ["Standing Front Flip","Backflip","Back Flip"],
+  "Standing Randy": [],
+  "Standing Side Flip": ["Standing Side Flip","Backflip","Back Flip"],
+  "Swivel Hips": ["Seat Drop"],
+  "Triple Backflip": [],
+  "Triple Front Full": [],
+  "Triple Front Full + Full In": [],
+  "Triple Full": [],
+  "Tuck Jump": ["Backflip","Front Flip"],
+  "Wall Flip": ["Wall Flip"],
+  "Webster": ["Backflip","Back Full"],
+  "Whip Back": ["Whip Back"]
+};
+const OFFICIAL_COMBO_STARTERS = new Set(["360 Dive Roll","360 Jump","Aerial","Arabian","Arabian Full","Back Drop","Back Drop to Feet","Back Flip","Back Full","Back Half","Back Handspring","Back Handspring Step-Out","Back Layout","Back Tuck","Backflip","Ball Out","Barani","Barani Ball Out","Butt Drop","Cart Arabian","Cart Full","Cartwheel","Cartwheel (Opposite Side)","Cheat Gainer","Cork","Cradle","Crash Dive","Dash Vault","Dive Roll","Double Backflip","Double Frontflip","Double Side Flip","Front Drop","Front Drop to Feet","Front Flip","Front Full","Front Handspring","Front Layout","Front Roll","Front Tuck","Frontflip","Full In","Gainer","Gainer Pike","Half In","Knee Back Half","Knee Backflip","Knee Drop","Knee Drop to 180","Knee Front Full","Knee Front Half","Knee Frontflip","Knee Full","Knee Rudy","Knee Side Flip","Knee Side Full","Kong","Layout Backflip","Layout Frontflip","Layout Side Flip","Lazy Vault","No-Hand Front Flip","One-Hand Cartwheel","One-Hand Cartwheel (Opposite Hand)","Palm Flip","Pike Back","Pike Backflip","Pike Barani","Pike Front","Pike Frontflip","Pike Jump","Pike Side Flip","Pike Side Full","Punch Front","Roundoff","Rudy","Running Front Flip","Running Side Flip","Safety Vault","Scoot Arabian","Scoot Cork","Scoot Full","Seat Drop","Seat Drop Half Turn","Seat Half Turn","Side Flip","Side Flip Half Twist","Side Full","Speed Vault","Standing Arabian","Standing Back Full","Standing Backflip","Standing Front Flip","Standing Side Flip","Swivel Hips","Tuck Jump","Wall Flip","Webster","Whip Back"]);
+
+/* Which structured category (ground / trampoline) each official trick
+   name is known to appear under — used only by the combo generator's
+   "Ground only" / "Trampoline only" setting to keep a mixed Quick
+   Trick/Wheel Spin pool from chaining a ground-exclusive trick into a
+   trampoline-exclusive one. Names not found in either (Add-On-only
+   entries like "Butt Drop") are left unrestricted by that setting. */
+const OFFICIAL_TRICK_CATEGORIES = {};
+(function buildOfficialTrickCategories(){
+  ['ground','trampoline'].forEach(cat => {
+    Object.keys(TRICKS[cat]).forEach(diff => {
+      TRICKS[cat][diff].forEach(name => {
+        (OFFICIAL_TRICK_CATEGORIES[name] = OFFICIAL_TRICK_CATEGORIES[name] || new Set()).add(cat);
+      });
+    });
+  });
+})();
+function trickAllowsCategory(name, cat){
+  const custom = getCustomTrickByName(name);
+  if(custom) return !custom.category || custom.category === cat || custom.category === 'other';
+  const cats = OFFICIAL_TRICK_CATEGORIES[name];
+  if(!cats) return true; // unclassified (Add-On-only names) — don't restrict
+  return cats.has(cat);
+}
+
+/* ============================================================
+   TRICK OVERRIDES: per-trick enabled/favorite/notes state layered on
+   top of the official database above, without ever mutating TRICKS /
+   ADDON_TRICKS / OFFICIAL_COMBO_TRANSITIONS themselves. "Disabling" a
+   trick here is how banning an official trick works — it disappears
+   from every pool everywhere, same as an unfavorited/enabled trick
+   just doesn't get the favorites-only bonus. Persisted the same safe
+   way as prefs/stats.
+   ============================================================ */
+function loadTrickOverrides(){
+  try{
+    const raw = localStorage.getItem('flipTrickOverrides');
+    if(raw) return JSON.parse(raw);
+  }catch(e){ /* storage unavailable, use defaults */ }
+  return {};
+}
+function saveTrickOverrides(){
+  try{ localStorage.setItem('flipTrickOverrides', JSON.stringify(trickOverrides)); }catch(e){ /* ignore */ }
+}
+let trickOverrides = loadTrickOverrides();
+
+function trickIsEnabled(name){
+  const custom = getCustomTrickByName(name);
+  if(custom) return custom.enabled !== false;
+  const o = trickOverrides[name];
+  return !o || o.enabled !== false;
+}
+function trickIsFavorite(name){
+  const custom = getCustomTrickByName(name);
+  if(custom) return !!custom.favorite;
+  const o = trickOverrides[name];
+  return !!(o && o.favorite);
+}
+function trickNotes(name){
+  const custom = getCustomTrickByName(name);
+  if(custom) return custom.notes || '';
+  const o = trickOverrides[name];
+  return (o && o.notes) || '';
+}
+function setOfficialTrickOverride(name, patch){
+  const o = Object.assign({}, trickOverrides[name] || {}, patch);
+  trickOverrides[name] = o;
+  saveTrickOverrides();
+}
+function toggleOfficialEnabled(name){
+  setOfficialTrickOverride(name, { enabled: !trickIsEnabled(name) });
+}
+function toggleOfficialFavorite(name){
+  setOfficialTrickOverride(name, { favorite: !trickIsFavorite(name) });
+}
+
+/* ============================================================
+   CUSTOM TRICKS: user-created tricks, kept in a completely separate
+   list from the official database so official tricks are never
+   accidentally modified. Each custom trick can be used everywhere an
+   official trick can — every game mode's pool functions merge these
+   in alongside TRICKS/ADDON_TRICKS (see allTrickPool/filteredTrickList/
+   filteredAddonTricks below). Persisted the same safe way as
+   prefs/stats.
+   ============================================================ */
+function loadCustomTricks(){
+  try{
+    const raw = localStorage.getItem('flipCustomTricks');
+    if(raw) return JSON.parse(raw);
+  }catch(e){ /* storage unavailable, use defaults */ }
+  return [];
+}
+function saveCustomTricks(){
+  try{ localStorage.setItem('flipCustomTricks', JSON.stringify(customTricks)); }catch(e){ /* ignore */ }
+}
+let customTricks = loadCustomTricks();
+let customTrickEditingId = null;
+
+function getCustomTrickByName(name){
+  return customTricks.find(t => t.name === name) || null;
+}
+function nextCustomTrickId(){
+  return 'custom-' + Date.now() + '-' + Math.floor(Math.random() * 100000);
+}
+function customTricksForScope(category, difficulty){
+  return customTricks.filter(t => {
+    if(t.enabled === false) return false;
+    if(category && t.category && t.category !== category && t.category !== 'other') return false;
+    if(difficulty && t.difficulty && t.difficulty !== difficulty) return false;
+    return true;
+  }).map(t => t.name);
+}
+function allEnabledCustomTrickNames(){
+  return customTricks.filter(t => t.enabled !== false).map(t => t.name);
+}
+function addOrUpdateCustomTrick(trick){
+  const idx = customTricks.findIndex(t => t.id === trick.id);
+  if(idx >= 0) customTricks[idx] = trick; else customTricks.push(trick);
+  saveCustomTricks();
+}
+function deleteCustomTrickById(id){
+  customTricks = customTricks.filter(t => t.id !== id);
+  saveCustomTricks();
+}
+function duplicateCustomTrickById(id){
+  const t = customTricks.find(t => t.id === id);
+  if(!t) return;
+  const copy = Object.assign({}, t, { id: nextCustomTrickId(), name: t.name + ' (Copy)' });
+  customTricks.push(copy);
+  saveCustomTricks();
+  return copy;
+}
+
+/* ============================================================
+   SMART COMBO TRICK GENERATION ("Allow Combo Tricks"): builds new
+   multi-trick combos on the fly from whatever pool of tricks is
+   already active — meaning every other filter (difficulty, category,
+   banned/disabled, custom lists, favorites, no doubles, no twisting
+   over full, etc.) is respected automatically, since the generator
+   only ever walks between tricks that are already present in that
+   filtered pool. It never invents a trick that isn't already legal to
+   draw on its own. Uses OFFICIAL_COMBO_TRANSITIONS (plus any custom
+   trick's own "leads into" list) as the allowed-transition graph, so
+   only realistic, hand-approved chains come out — never a random walk.
+   ============================================================ */
+const DEFAULT_COMBO_SETTINGS = {
+  enabled: false,
+  maxLength: 3,       // 2, 3, or 4
+  minLength: 2,       // 2, 3, or 4 (never above maxLength)
+  allowRepeats: true,
+  groundOnly: false,
+  trampolineOnly: false,
+  comboOnly: false     // "Combo Only Mode" — draw ONLY combos (Game of FLIP,
+                       // Quick Trick, Wheel Spin, Time Attack, Tournament).
+                       // Game of Add-On is untouched by this setting.
+};
+function loadComboSettings(){
+  try{
+    const raw = localStorage.getItem('flipComboSettings');
+    if(raw) return Object.assign({}, DEFAULT_COMBO_SETTINGS, JSON.parse(raw));
+  }catch(e){ /* storage unavailable, use defaults */ }
+  return Object.assign({}, DEFAULT_COMBO_SETTINGS);
+}
+function saveComboSettings(){
+  try{ localStorage.setItem('flipComboSettings', JSON.stringify(comboSettings)); }catch(e){ /* ignore */ }
+}
+let comboSettings = loadComboSettings();
+
+function comboTransitionsFor(name){
+  const custom = getCustomTrickByName(name);
+  if(custom) return Array.isArray(custom.transitions) ? custom.transitions : [];
+  return OFFICIAL_COMBO_TRANSITIONS[name] || [];
+}
+function comboStarterEligible(name){
+  const custom = getCustomTrickByName(name);
+  if(custom) return Array.isArray(custom.transitions) && custom.transitions.length > 0;
+  return OFFICIAL_COMBO_STARTERS.has(name);
+}
+
+/* Walks the allowed-transition graph up to comboSettings.maxLength deep,
+   restricted to trick names present in `basePool` (which has already had
+   every other active filter applied) and — if groundOnly/trampolineOnly
+   is set — further restricted to tricks that belong to that category.
+   Only chains of at least comboSettings.minLength are kept in the result
+   (shorter intermediate chains still get walked through, just not
+   returned, so a minLength of 3 or 4 filters out the quick 2-trick
+   combos for players who want longer sequences every time).
+   Returns an array of " → "-joined combo strings. */
+function generateCombosForPool(basePool){
+  if(!comboSettings.enabled || !basePool.length) return [];
+  let scoped = basePool;
+  if(comboSettings.groundOnly) scoped = scoped.filter(t => trickAllowsCategory(t, 'ground'));
+  if(comboSettings.trampolineOnly) scoped = scoped.filter(t => trickAllowsCategory(t, 'trampoline'));
+  const poolSet = new Set(scoped);
+  const maxLen = Math.max(2, Math.min(4, comboSettings.maxLength || 3));
+  const minLen = Math.max(2, Math.min(maxLen, comboSettings.minLength || 2));
+  const allowRepeats = comboSettings.allowRepeats !== false;
+  const seen = new Set();
+  const results = [];
+  scoped.forEach(start => {
+    if(!comboStarterEligible(start)) return;
+    const edges0 = comboTransitionsFor(start).filter(t => poolSet.has(t));
+    if(!edges0.length) return;
+    const chain = [start];
+    (function dfs(){
+      if(chain.length >= minLen){
+        const key = chain.join(' → ');
+        if(!seen.has(key)){ seen.add(key); results.push(key); }
+      }
+      if(chain.length >= maxLen) return;
+      const last = chain[chain.length - 1];
+      const edges = comboTransitionsFor(last).filter(t => poolSet.has(t));
+      edges.forEach(next => {
+        if(!allowRepeats && chain.includes(next)) return;
+        chain.push(next);
+        dfs();
+        chain.pop();
+      });
+    })();
+  });
+  return results;
+}
+
+/* ============================================================
+   COMBO SETTINGS SCREEN
+   ============================================================ */
+function comboSettingsSummaryText(){
+  if(!comboSettings.enabled) return 'Off';
+  const scope = comboSettings.groundOnly ? ' · Ground only' : (comboSettings.trampolineOnly ? ' · Trampoline only' : '');
+  const lenText = comboSettings.minLength >= comboSettings.maxLength
+    ? `${comboSettings.maxLength} tricks`
+    : `${comboSettings.minLength}-${comboSettings.maxLength} tricks`;
+  const comboOnlyText = comboSettings.comboOnly ? ' · Combo Only Mode' : '';
+  return `On · ${lenText}${comboSettings.allowRepeats ? '' : ' · no repeats'}${scope}${comboOnlyText}`;
+}
+function openComboSettings(returnTo){
+  if(returnTo) settingsReturnTo = returnTo;
+  updateComboSettingsUI();
+  go('screen-combo-settings');
+}
+function updateComboSettingsUI(){
+  const el = document.getElementById('combo-enabled');
+  if(el) el.checked = comboSettings.enabled;
+  const only = document.getElementById('combo-only-mode');
+  if(only) only.checked = comboSettings.comboOnly;
+  const rep = document.getElementById('combo-allow-repeats');
+  if(rep) rep.checked = comboSettings.allowRepeats;
+  const g = document.getElementById('combo-ground-only');
+  if(g) g.checked = comboSettings.groundOnly;
+  const t = document.getElementById('combo-trampoline-only');
+  if(t) t.checked = comboSettings.trampolineOnly;
+  document.querySelectorAll('#combo-length-chips button').forEach(b => {
+    b.classList.toggle('active', Number(b.dataset.len) === comboSettings.maxLength);
+  });
+  document.querySelectorAll('#combo-min-length-chips button').forEach(b => {
+    const n = Number(b.dataset.len);
+    b.classList.toggle('active', n === comboSettings.minLength);
+    b.disabled = n > comboSettings.maxLength;
+  });
+  const summary = document.getElementById('combo-settings-summary');
+  if(summary) summary.textContent = comboSettingsSummaryText();
+  const preview = document.getElementById('combo-settings-preview');
+  if(preview){
+    if(!comboSettings.enabled){
+      preview.textContent = 'Turn this on to mix generated combos into every mode\'s draw pool.';
+    } else {
+      const samplePool = allTrickPool(['ground', 'trampoline'], ['novice', 'beginner', 'intermediate', 'advanced']);
+      const combos = generateCombosForPool(samplePool);
+      const modeNote = comboSettings.comboOnly
+        ? ' Combo Only Mode is on, so FLIP, Quick Trick, Wheel Spin, Time Attack, and Tournament will draw ONLY combos (Add-On is unaffected).'
+        : '';
+      preview.textContent = `${combos.length} combo${combos.length === 1 ? '' : 's'} available right now across Ground + Trampoline, every level.${modeNote}`;
+    }
+  }
+}
+function toggleComboSetting(key, el){
+  comboSettings[key] = el.checked;
+  if(key === 'groundOnly' && el.checked){ comboSettings.trampolineOnly = false; }
+  if(key === 'trampolineOnly' && el.checked){ comboSettings.groundOnly = false; }
+  // Combo Only Mode needs combos to actually be enabled to mean anything —
+  // auto-enable "Allow combo tricks" when it's switched on, and switch
+  // Combo Only Mode back off if combos themselves get turned off.
+  if(key === 'comboOnly' && el.checked){ comboSettings.enabled = true; }
+  if(key === 'enabled' && !el.checked){ comboSettings.comboOnly = false; }
+  saveComboSettings();
+  updateComboSettingsUI();
+}
+function setComboMaxLength(n){
+  comboSettings.maxLength = n;
+  if(comboSettings.minLength > n) comboSettings.minLength = n;
+  saveComboSettings();
+  updateComboSettingsUI();
+}
+function setComboMinLength(n){
+  comboSettings.minLength = Math.min(n, comboSettings.maxLength);
+  saveComboSettings();
+  updateComboSettingsUI();
+}
+
+/* ============================================================
+   MANAGE TRICKS SCREEN: browse the official database (favorite /
+   enable-disable / add notes, never edit its name/category/etc — the
+   official list itself is read-only) alongside full CRUD on custom
+   tricks. Search + sort + scope filter (All / Official / Custom /
+   Favorites / Disabled) all operate over one combined list.
+   ============================================================ */
+let trickMgrScope = 'all';
+
+function allOfficialTrickEntries(){
+  const entries = [];
+  const seen = new Set();
+  ['ground', 'trampoline'].forEach(cat => {
+    Object.keys(TRICKS[cat]).forEach(diff => {
+      TRICKS[cat][diff].forEach(name => {
+        if(seen.has(name)) return;
+        seen.add(name);
+        entries.push({ name, category: cat, difficulty: diff, official: true });
+      });
+    });
+  });
+  ADDON_TRICKS.forEach(name => {
+    if(seen.has(name)) return;
+    seen.add(name);
+    entries.push({ name, category: 'addon', difficulty: null, official: true });
+  });
+  return entries;
+}
+function allTrickEntriesForManager(){
+  const official = allOfficialTrickEntries().map(e => Object.assign({}, e, {
+    id: 'official:' + e.name,
+    enabled: trickIsEnabled(e.name),
+    favorite: trickIsFavorite(e.name),
+    notes: trickNotes(e.name)
+  }));
+  const custom = customTricks.map(t => Object.assign({}, t, {
+    id: t.id,
+    official: false,
+    enabled: t.enabled !== false
+  }));
+  return official.concat(custom);
+}
+function setTrickMgrScope(scope){
+  trickMgrScope = scope;
+  document.querySelectorAll('#trick-mgr-scope-chips button').forEach(b => {
+    b.classList.toggle('active', b.dataset.scope === scope);
+  });
+  renderTrickManagerList();
+}
+function openManageTricks(returnTo){
+  if(returnTo) settingsReturnTo = returnTo;
+  trickMgrScope = 'all';
+  const search = document.getElementById('trick-mgr-search');
+  if(search) search.value = '';
+  document.querySelectorAll('#trick-mgr-scope-chips button').forEach(b => b.classList.toggle('active', b.dataset.scope === 'all'));
+  renderTrickManagerList();
+  go('screen-manage-tricks');
+}
+function renderTrickManagerList(){
+  const wrap = document.getElementById('trick-mgr-list');
+  if(!wrap) return;
+  const q = (document.getElementById('trick-mgr-search').value || '').trim().toLowerCase();
+  let entries = allTrickEntriesForManager();
+  if(trickMgrScope === 'official') entries = entries.filter(e => e.official);
+  else if(trickMgrScope === 'custom') entries = entries.filter(e => !e.official);
+  else if(trickMgrScope === 'favorites') entries = entries.filter(e => e.favorite);
+  else if(trickMgrScope === 'disabled') entries = entries.filter(e => !e.enabled);
+  if(q) entries = entries.filter(e => e.name.toLowerCase().includes(q));
+  entries.sort((a, b) => a.name.localeCompare(b.name));
+  const emptyNote = document.getElementById('trick-mgr-empty-note');
+  if(!entries.length){
+    wrap.innerHTML = '';
+    if(emptyNote) emptyNote.style.display = 'block';
+    return;
+  }
+  if(emptyNote) emptyNote.style.display = 'none';
+  wrap.innerHTML = entries.map(e => {
+    const metaBits = [e.category, e.difficulty].filter(Boolean).join(' · ') + (e.official ? '' : ' · custom');
+    const actions = e.official
+      ? `<button class="trick-mgr-icon-btn" title="${e.enabled ? 'Disable' : 'Enable'}" onclick='toggleOfficialEnabled(${JSON.stringify(e.name)}); renderTrickManagerList();'>${e.enabled ? '⏸' : '▶'}</button>`
+      : `<button class="trick-mgr-icon-btn" title="Edit" onclick='openTrickEditor(${JSON.stringify(e.id)})'>✎</button>
+         <button class="trick-mgr-icon-btn" title="Duplicate" onclick='duplicateCustomTrickById(${JSON.stringify(e.id)}); renderTrickManagerList();'>⧉</button>
+         <button class="trick-mgr-icon-btn" title="Delete" onclick='deleteCustomTrickById(${JSON.stringify(e.id)}); renderTrickManagerList();'>🗑</button>`;
+    const starOnClick = e.official
+      ? `toggleOfficialFavorite(${JSON.stringify(e.name)}); renderTrickManagerList();`
+      : `addOrUpdateCustomTrick(Object.assign({}, customTricks.find(t=>t.id===${JSON.stringify(e.id)}), {favorite: !${e.favorite}})); renderTrickManagerList();`;
+    return `<div class="trick-mgr-row${e.enabled ? '' : ' disabled'}">
+      <div class="trick-mgr-info">
+        <div class="trick-mgr-name">${e.name}</div>
+        <div class="trick-mgr-meta">${metaBits}</div>
+      </div>
+      <div class="trick-mgr-actions">
+        <button class="trick-mgr-star" onclick='${starOnClick}'>${e.favorite ? '⭐' : '☆'}</button>
+        ${actions}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* Quick-add: browse official tricks by category, tap one to clone it
+   into the custom list (pre-filled, ready to rename/edit). */
+const QUICKADD_CATEGORY_LABELS = { ground: 'Ground Tricks', trampoline: 'Trampoline Tricks', wall: 'Wall Tricks', vault: 'Vaults' };
+function quickAddCategory(cat){
+  document.getElementById('quickadd-picker-title').textContent = QUICKADD_CATEGORY_LABELS[cat] || 'Tricks';
+  document.getElementById('quickadd-picker-badge').textContent = 'QUICK ADD';
+  let names;
+  if(cat === 'wall') names = allOfficialTrickEntries().filter(e => isWallTrick(e.name)).map(e => e.name);
+  else if(cat === 'vault') names = allOfficialTrickEntries().filter(e => isVaultTrick(e.name)).map(e => e.name);
+  else names = allOfficialTrickEntries().filter(e => e.category === cat).map(e => e.name);
+  names = [...new Set(names)].sort();
+  const wrap = document.getElementById('quickadd-picker-list');
+  wrap.innerHTML = names.map(n => `<div class="trick-mgr-row" style="cursor:pointer;" onclick='quickAddTrick(${JSON.stringify(n)}, ${JSON.stringify(cat)})'>
+    <div class="trick-mgr-info"><div class="trick-mgr-name">${n}</div></div>
+    <div class="trick-mgr-actions">+ Add</div>
+  </div>`).join('');
+  go('screen-quickadd-picker');
+}
+function quickAddTrick(name, quickAddCat){
+  const officialCat = quickAddCat === 'wall' || quickAddCat === 'vault' ? 'other' : quickAddCat;
+  const trick = {
+    id: nextCustomTrickId(),
+    name: name,
+    category: officialCat,
+    difficulty: 'novice',
+    type: quickAddCat === 'vault' ? 'vault' : (quickAddCat === 'wall' ? 'other' : 'flip'),
+    notes: '',
+    enabled: true,
+    favorite: false,
+    transitions: []
+  };
+  addOrUpdateCustomTrick(trick);
+  showToast(name + ' added to your custom list');
+  openTrickEditor(trick.id);
+}
+
+/* ============================================================
+   TRICK EDITOR SCREEN
+   ============================================================ */
+let trickEditorDraft = null;
+
+function blankTrickDraft(){
+  return { id: null, name: '', category: 'ground', difficulty: 'novice', type: 'flip', notes: '', enabled: true, favorite: false, transitions: [] };
+}
+function openTrickEditor(id){
+  if(id){
+    const existing = customTricks.find(t => t.id === id);
+    trickEditorDraft = existing ? Object.assign({}, existing) : blankTrickDraft();
+  } else {
+    trickEditorDraft = blankTrickDraft();
+  }
+  document.getElementById('trick-editor-title').textContent = id ? 'Edit trick' : 'Create a trick';
+  document.getElementById('trick-editor-badge').textContent = id ? 'EDIT TRICK' : 'NEW TRICK';
+  document.getElementById('trick-editor-name').value = trickEditorDraft.name;
+  document.getElementById('trick-editor-notes').value = trickEditorDraft.notes || '';
+  document.getElementById('trick-editor-enabled').checked = trickEditorDraft.enabled !== false;
+  document.getElementById('trick-editor-favorite').checked = !!trickEditorDraft.favorite;
+  document.getElementById('trick-editor-existing-actions').style.display = id ? 'flex' : 'none';
+  document.getElementById('trick-editor-autocomplete').style.display = 'none';
+  updateTrickEditorChips();
+  go('screen-trick-editor');
+}
+function updateTrickEditorChips(){
+  document.querySelectorAll('#trick-editor-category-chips button').forEach(b => b.classList.toggle('active', b.dataset.val === trickEditorDraft.category));
+  document.querySelectorAll('#trick-editor-difficulty-chips button').forEach(b => b.classList.toggle('active', b.dataset.val === trickEditorDraft.difficulty));
+  document.querySelectorAll('#trick-editor-type-chips button').forEach(b => b.classList.toggle('active', b.dataset.val === trickEditorDraft.type));
+}
+function setTrickEditorField(key, val){
+  trickEditorDraft[key] = val;
+  updateTrickEditorChips();
+}
+function renderTrickNameAutocomplete(){
+  const input = document.getElementById('trick-editor-name');
+  trickEditorDraft.name = input.value;
+  const q = input.value.trim().toLowerCase();
+  const list = document.getElementById('trick-editor-autocomplete');
+  if(!q){ list.style.display = 'none'; return; }
+  const matches = allOfficialTrickEntries()
+    .filter(e => e.name.toLowerCase().startsWith(q))
+    .filter((e, i, arr) => arr.findIndex(x => x.name === e.name) === i)
+    .slice(0, 8);
+  if(!matches.length){ list.style.display = 'none'; return; }
+  list.innerHTML = matches.map(m => `<div class="autocomplete-item" onclick='pickAutocompleteTrick(${JSON.stringify(m.name)}, ${JSON.stringify(m.category)}, ${JSON.stringify(m.difficulty)})'>
+    ${m.name}<div class="ai-meta">${[m.category, m.difficulty].filter(Boolean).join(' · ')}</div>
+  </div>`).join('');
+  list.style.display = 'block';
+}
+function pickAutocompleteTrick(name, category, difficulty){
+  document.getElementById('trick-editor-name').value = name;
+  trickEditorDraft.name = name;
+  if(category && category !== 'addon'){ trickEditorDraft.category = category; }
+  if(difficulty && difficulty !== 'advanced'){ trickEditorDraft.difficulty = difficulty; }
+  updateTrickEditorChips();
+  document.getElementById('trick-editor-autocomplete').style.display = 'none';
+}
+function saveTrickEditor(){
+  const name = (document.getElementById('trick-editor-name').value || '').trim();
+  if(!name){ showToast('Give the trick a name first'); return; }
+  trickEditorDraft.name = name;
+  trickEditorDraft.notes = document.getElementById('trick-editor-notes').value || '';
+  trickEditorDraft.enabled = document.getElementById('trick-editor-enabled').checked;
+  trickEditorDraft.favorite = document.getElementById('trick-editor-favorite').checked;
+  if(!trickEditorDraft.id) trickEditorDraft.id = nextCustomTrickId();
+  if(!Array.isArray(trickEditorDraft.transitions)) trickEditorDraft.transitions = [];
+  addOrUpdateCustomTrick(trickEditorDraft);
+  showToast('Trick saved');
+  go('screen-manage-tricks');
+  renderTrickManagerList();
+}
+function duplicateFromEditor(){
+  if(!trickEditorDraft.id){ showToast('Save it first'); return; }
+  const copy = duplicateCustomTrickById(trickEditorDraft.id);
+  if(copy) openTrickEditor(copy.id);
+}
+function deleteFromEditor(){
+  if(!trickEditorDraft.id) return;
+  deleteCustomTrickById(trickEditorDraft.id);
+  showToast('Trick deleted');
+  go('screen-manage-tricks');
+  renderTrickManagerList();
+}
+
+/* ============================================================
    TRICK TAGGING: lightweight, name-based heuristics that power the
    Quick Trick filters (No doubles / No twisting over full / No wall
    tricks). These are reasonable approximations from naming
@@ -1610,6 +2582,9 @@ function allTrickPool(cats, diffs){
   cats.forEach(cat => {
     diffs.forEach(diff => {
       (TRICKS[cat] && TRICKS[cat][diff] ? TRICKS[cat][diff] : []).forEach(t => {
+        if(!seen.has(t) && trickIsEnabled(t)){ seen.add(t); pool.push(t); }
+      });
+      customTricksForScope(cat, diff).forEach(t => {
         if(!seen.has(t)){ seen.add(t); pool.push(t); }
       });
     });
@@ -1725,18 +2700,34 @@ const DEFAULT_QT_FILTERS = {
   onlySide: false,
   onlyBack: false,
   noDoubles: false,
+  // Legacy binary twist toggles — superseded by the granular `maxTwist`
+  // cap below, kept only so old saved data migrates cleanly (see
+  // loadQtFilters()). Nothing reads these two for filtering anymore.
   noTwistOverFull: false,
   noTwistAtAll: false,
+  maxTwist: null,        // null = no cap; otherwise a TWIST_TOKENS-scale number (0, 0.5, 1, 1.5, 2)
   noWallTricks: false,
   noVaults: false,
   noCombos: false,
+  favoritesOnly: false,
   noRepeats: true
 };
+
+// One-time migration: a save from before the granular twist cap existed
+// will have noTwistOverFull/noTwistAtAll but no maxTwist — translate it
+// so existing users don't silently lose their twist filter.
+function migrateTwistCap(parsed){
+  if(parsed && parsed.maxTwist === undefined){
+    if(parsed.noTwistAtAll) parsed.maxTwist = 0;
+    else if(parsed.noTwistOverFull) parsed.maxTwist = 1;
+  }
+  return parsed;
+}
 
 function loadQtFilters(){
   try{
     const raw = localStorage.getItem('flipQtFilters');
-    if(raw) return Object.assign({}, DEFAULT_QT_FILTERS, JSON.parse(raw));
+    if(raw) return Object.assign({}, DEFAULT_QT_FILTERS, migrateTwistCap(JSON.parse(raw)));
   }catch(e){ /* storage unavailable, use defaults */ }
   return Object.assign({}, DEFAULT_QT_FILTERS);
 }
@@ -1759,11 +2750,20 @@ function qtFilteredPool(){
     .map(key => ({ onlyFront: 'front', onlySide: 'side', onlyBack: 'back' }[key]));
   if(allowedDirections.length) pool = pool.filter(t => allowedDirections.includes(trickDirection(t)));
   if(qtFilters.noDoubles) pool = pool.filter(t => !isDoubleTrick(t));
-  if(qtFilters.noTwistOverFull) pool = pool.filter(t => twistAmount(t) <= 1);
-  if(qtFilters.noTwistAtAll) pool = pool.filter(t => twistAmount(t) === 0);
+  if(typeof qtFilters.maxTwist === 'number') pool = pool.filter(t => twistAmount(t) <= qtFilters.maxTwist);
   if(qtFilters.noWallTricks) pool = pool.filter(t => !isWallTrick(t));
   if(qtFilters.noVaults) pool = pool.filter(t => !isVaultTrick(t));
-  if(qtFilters.noCombos) pool = pool.filter(t => !isComboTrick(t));
+  if(qtFilters.favoritesOnly) pool = pool.filter(t => trickIsFavorite(t));
+  // "Single tricks only" also strips out any freshly-generated combos —
+  // generated combos are appended after this filter runs, so re-check it
+  // there too (see below).
+  // Combo Only Mode (global, set on the Smart Combo Tricks screen) wins
+  // over the per-mode "Single tricks only" toggle — Quick Trick and Wheel
+  // Spin both read this same pool, so turning Combo Only Mode on there
+  // applies to both at once.
+  if(comboSettings.comboOnly) pool = comboSettings.enabled ? generateCombosForPool(pool) : [];
+  else if(qtFilters.noCombos) pool = pool.filter(t => !isComboTrick(t));
+  else if(comboSettings.enabled) pool = pool.concat(generateCombosForPool(pool));
   return pool;
 }
 
@@ -1798,14 +2798,17 @@ function singleTrickDirection(name){
   if(SIDE_TOKENS.some(re => re.test(name))) return 'side';
   return 'neutral';
 }
+// Splits either a hand-authored "A + B" combo or a generated "A → B → C"
+// combo into its individual trick names.
+function comboParts(name){ return name.split(/ \+ | → /).map(p => p.trim()).filter(Boolean); }
 function trickDirection(name){
-  const dirs = name.split(' + ').map(p => singleTrickDirection(p.trim())).filter(d => d !== 'neutral');
+  const dirs = comboParts(name).map(p => singleTrickDirection(p)).filter(d => d !== 'neutral');
   const unique = [...new Set(dirs)];
   if(unique.length === 0) return 'neutral';
   if(unique.length === 1) return unique[0];
   return 'mixed';
 }
-function isComboTrick(name){ return name.includes(' + '); }
+function isComboTrick(name){ return name.includes(' + ') || name.includes(' → '); }
 
 /* ============================================================
    DIFFICULTY FILTERS: optional toggles on the "Pick a level" step
@@ -1829,16 +2832,19 @@ const DEFAULT_DIFF_FILTERS = {
   onlySide: false,
   onlyBack: false,
   noDoubles: false,
+  // Legacy binary twist toggles — see migrateTwistCap()/maxTwist above qtFilters.
   noTwistOverFull: false,
   noTwistAtAll: false,
+  maxTwist: null,        // null = no cap; otherwise a TWIST_TOKENS-scale number (0, 0.5, 1, 1.5, 2)
   noWallTricks: false,
   noVaults: false,
-  noCombos: false
+  noCombos: false,
+  favoritesOnly: false
 };
 function loadDiffFilters(){
   try{
     const raw = localStorage.getItem('flipDiffFilters');
-    if(raw) return Object.assign({}, DEFAULT_DIFF_FILTERS, JSON.parse(raw));
+    if(raw) return Object.assign({}, DEFAULT_DIFF_FILTERS, migrateTwistCap(JSON.parse(raw)));
   }catch(e){ /* storage unavailable, use defaults */ }
   return Object.assign({}, DEFAULT_DIFF_FILTERS);
 }
@@ -1848,7 +2854,9 @@ function saveDiffFilters(){
 let diffFilters = loadDiffFilters();
 
 function filteredTrickList(category, difficulty){
-  let list = (TRICKS[category] && TRICKS[category][difficulty]) ? TRICKS[category][difficulty] : [];
+  let list = ((TRICKS[category] && TRICKS[category][difficulty]) ? TRICKS[category][difficulty] : [])
+    .filter(t => trickIsEnabled(t));
+  list = list.concat(customTricksForScope(category, difficulty).filter(t => !list.includes(t)));
   // Direction toggles are multi-select: checking more than one (e.g. "Only
   // front" + "Only side") means "allow any of these directions" (OR), not
   // an impossible AND of two directions at once. None checked = no
@@ -1858,11 +2866,16 @@ function filteredTrickList(category, difficulty){
     .map(key => ({ onlyFront: 'front', onlySide: 'side', onlyBack: 'back' }[key]));
   if(allowedDirections.length) list = list.filter(t => allowedDirections.includes(trickDirection(t)));
   if(diffFilters.noDoubles) list = list.filter(t => !isDoubleTrick(t));
-  if(diffFilters.noTwistOverFull) list = list.filter(t => twistAmount(t) <= 1);
-  if(diffFilters.noTwistAtAll) list = list.filter(t => twistAmount(t) === 0);
+  if(typeof diffFilters.maxTwist === 'number') list = list.filter(t => twistAmount(t) <= diffFilters.maxTwist);
   if(diffFilters.noWallTricks) list = list.filter(t => !isWallTrick(t));
   if(diffFilters.noVaults) list = list.filter(t => !isVaultTrick(t));
-  if(diffFilters.noCombos) list = list.filter(t => !isComboTrick(t));
+  if(diffFilters.favoritesOnly) list = list.filter(t => trickIsFavorite(t));
+  // Combo Only Mode (global) wins over the per-mode "Single tricks only"
+  // toggle. This is what powers Combo Only Mode in Game of FLIP, Time
+  // Attack, and Tournament, which all share filteredTrickList().
+  if(comboSettings.comboOnly) list = comboSettings.enabled ? generateCombosForPool(list) : [];
+  else if(diffFilters.noCombos) list = list.filter(t => !isComboTrick(t));
+  else if(comboSettings.enabled) list = list.concat(generateCombosForPool(list));
   return list;
 }
 
@@ -1871,18 +2884,56 @@ const DIFF_TOGGLE_IDS = {
   onlySide: 'diff-only-side',
   onlyBack: 'diff-only-back',
   noDoubles: 'diff-no-doubles',
-  noTwistOverFull: 'diff-no-twist',
-  noTwistAtAll: 'diff-no-twist-all',
   noWallTricks: 'diff-no-wall',
   noVaults: 'diff-no-vaults',
-  noCombos: 'diff-no-combos'
+  noCombos: 'diff-no-combos',
+  favoritesOnly: 'diff-favorites-only'
 };
+
+// Shared list powering every "Max twist" chip-select (diff/addon/qt) — one
+// source of truth for the options so all three screens stay in sync.
+// value: null means "no cap" (data-twist="any" in the HTML).
+const TWIST_CAP_OPTIONS = [
+  { value: 0, label: 'None' },
+  { value: 0.5, label: 'Half' },
+  { value: 1, label: 'Full' },
+  { value: 1.5, label: '1.5' },
+  { value: 2, label: 'Double' },
+  { value: null, label: 'Any' }
+];
+function syncTwistChips(containerId, currentValue){
+  const wrap = document.getElementById(containerId);
+  if(!wrap) return;
+  wrap.querySelectorAll('button').forEach(b => {
+    const raw = b.dataset.twist;
+    const val = raw === 'any' ? null : Number(raw);
+    b.classList.toggle('active', val === currentValue);
+  });
+}
+function setDiffTwistCap(val){
+  diffFilters.maxTwist = val;
+  diffFilters.noTwistAtAll = (val === 0);
+  diffFilters.noTwistOverFull = (val === 1);
+  saveDiffFilters();
+  updateDifficultyFilterUI();
+  updateAddonFilterUI();
+}
+function setQtTwistCap(val){
+  qtFilters.maxTwist = val;
+  qtFilters.noTwistAtAll = (val === 0);
+  qtFilters.noTwistOverFull = (val === 1);
+  saveQtFilters();
+  updateQtFilterUI();
+}
 
 function updateDifficultyFilterUI(){
   Object.keys(DIFF_TOGGLE_IDS).forEach(key => {
     const el = document.getElementById(DIFF_TOGGLE_IDS[key]);
     if(el) el.checked = diffFilters[key];
   });
+  syncTwistChips('diff-twist-chips', diffFilters.maxTwist);
+  const dcs = document.getElementById('diff-combo-summary');
+  if(dcs) dcs.textContent = comboSettingsSummaryText();
   if(!state.category) return;
   ['novice', 'beginner', 'intermediate', 'advanced'].forEach(diff => {
     const count = filteredTrickList(state.category, diff).length;
@@ -1908,25 +2959,30 @@ const ADDON_TOGGLE_IDS = {
   onlySide: 'addon-only-side',
   onlyBack: 'addon-only-back',
   noDoubles: 'addon-no-doubles',
-  noTwistOverFull: 'addon-no-twist',
-  noTwistAtAll: 'addon-no-twist-all',
   noWallTricks: 'addon-no-wall',
   noVaults: 'addon-no-vaults',
-  noCombos: 'addon-no-combos'
+  noCombos: 'addon-no-combos',
+  favoritesOnly: 'addon-favorites-only'
 };
 
 function filteredAddonTricks(){
-  let list = ADDON_TRICKS.slice();
+  let list = ADDON_TRICKS.slice().filter(t => trickIsEnabled(t));
+  list = list.concat(allEnabledCustomTrickNames().filter(t => !list.includes(t)));
   const allowedDirections = ['onlyFront', 'onlySide', 'onlyBack']
     .filter(key => diffFilters[key])
     .map(key => ({ onlyFront: 'front', onlySide: 'side', onlyBack: 'back' }[key]));
   if(allowedDirections.length) list = list.filter(t => allowedDirections.includes(trickDirection(t)));
   if(diffFilters.noDoubles) list = list.filter(t => !isDoubleTrick(t));
-  if(diffFilters.noTwistOverFull) list = list.filter(t => twistAmount(t) <= 1);
-  if(diffFilters.noTwistAtAll) list = list.filter(t => twistAmount(t) === 0);
+  if(typeof diffFilters.maxTwist === 'number') list = list.filter(t => twistAmount(t) <= diffFilters.maxTwist);
   if(diffFilters.noWallTricks) list = list.filter(t => !isWallTrick(t));
   if(diffFilters.noVaults) list = list.filter(t => !isVaultTrick(t));
+  if(diffFilters.favoritesOnly) list = list.filter(t => trickIsFavorite(t));
+  // NOTE: Combo Only Mode deliberately does NOT apply here — Game of
+  // Add-On's turn-by-turn single-trick-append mechanic is structurally
+  // different, and the user's Combo Only Mode request explicitly named
+  // FLIP/Quick Trick/Wheel Spin/Time Attack/Tournament, not Add-On.
   if(diffFilters.noCombos) list = list.filter(t => !isComboTrick(t));
+  else if(comboSettings.enabled) list = list.concat(generateCombosForPool(list));
   return list;
 }
 
@@ -1935,6 +2991,7 @@ function updateAddonFilterUI(){
     const el = document.getElementById(ADDON_TOGGLE_IDS[key]);
     if(el) el.checked = diffFilters[key];
   });
+  syncTwistChips('addon-twist-chips', diffFilters.maxTwist);
   const count = filteredAddonTricks().length;
   const countEl = document.getElementById('addon-filter-count');
   if(countEl){
@@ -2432,6 +3489,9 @@ function go(id){
   if(id === 'screen-title'){ updateHomeStats(); updateStreakUI(); }
   if(id === 'screen-difficulty') updateDifficultyFilterUI();
   if(id === 'screen-addon-filters') updateAddonFilterUI();
+  if(id === 'screen-quicktrick') updateQtFilterUI();
+  if(id === 'screen-manage-tricks') renderTrickManagerList();
+  if(id === 'screen-combo-settings') updateComboSettingsUI();
   updateStepBadge(id);
 }
 
@@ -2466,12 +3526,14 @@ function updateQtFilterUI(){
   document.getElementById('qt-only-side').checked = qtFilters.onlySide;
   document.getElementById('qt-only-back').checked = qtFilters.onlyBack;
   document.getElementById('qt-no-doubles').checked = qtFilters.noDoubles;
-  document.getElementById('qt-no-twist').checked = qtFilters.noTwistOverFull;
-  document.getElementById('qt-no-twist-all').checked = qtFilters.noTwistAtAll;
+  syncTwistChips('qt-twist-chips', qtFilters.maxTwist);
   document.getElementById('qt-no-wall').checked = qtFilters.noWallTricks;
   document.getElementById('qt-no-vaults').checked = qtFilters.noVaults;
   document.getElementById('qt-no-combos').checked = qtFilters.noCombos;
+  document.getElementById('qt-favorites-only').checked = qtFilters.favoritesOnly;
   document.getElementById('qt-no-repeats').checked = qtFilters.noRepeats;
+  const qcs = document.getElementById('qt-combo-summary');
+  if(qcs) qcs.textContent = comboSettingsSummaryText();
   updateQtCount();
 }
 
@@ -2516,7 +3578,7 @@ function drawQuickTrick(){
   }
   const trick = pool[Math.floor(Math.random() * pool.length)];
   qtLastTrick = trick;
-  document.getElementById('qt-trick-name').textContent = trick;
+  setTrickDisplay(document.getElementById('qt-trick-name'), trick);
   document.getElementById('qt-trick-meta').textContent =
     [isDoubleTrick(trick) ? 'double' : null, twistAmount(trick) > 0 ? `${twistAmount(trick)}× twist` : 'no twist', isWallTrick(trick) ? 'wall' : null]
       .filter(Boolean).join(' · ');
@@ -2869,10 +3931,19 @@ function drawTrick(){
   return trick;
 }
 
+// Generated combos ("A → B → C → D") run noticeably longer than a single
+// trick name — shrink the font on the trick-name display so a 4-trick
+// combo never overflows the phone-frame width.
+function setTrickDisplay(el, name){
+  if(!el) return;
+  el.textContent = name;
+  el.classList.toggle('combo-text', !!name && name.length > 26);
+}
+
 function newTrick(){
   const trick = drawTrick();
   state.currentTrick = trick;
-  document.getElementById('trick-name').textContent = trick;
+  setTrickDisplay(document.getElementById('trick-name'), trick);
   document.getElementById('trick-meta').textContent = `${state.category} · ${state.difficulty}`;
 }
 
@@ -3279,7 +4350,7 @@ function taTick(){
 function taNextTrick(){
   const trick = drawTrick();
   state.currentTrick = trick;
-  document.getElementById('ta-trick-name').textContent = trick;
+  setTrickDisplay(document.getElementById('ta-trick-name'), trick);
   document.getElementById('ta-trick-meta').textContent = `${state.category} · ${state.difficulty}`;
 }
 
@@ -3530,7 +4601,7 @@ function bracketDrawTrick(){
 function bracketNewTrick(){
   const trick = bracketDrawTrick();
   state.bracket.match.currentTrick = trick;
-  document.getElementById('bracket-trick-name').textContent = trick;
+  setTrickDisplay(document.getElementById('bracket-trick-name'), trick);
   document.getElementById('bracket-trick-meta').textContent = `${state.category} · ${state.difficulty}`;
 }
 
