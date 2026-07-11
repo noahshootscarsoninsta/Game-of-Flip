@@ -661,6 +661,7 @@
     margin-bottom:8px;
   }
   .trick-mgr-row.disabled{ opacity:.5; }
+  .trick-mgr-row.added{ border-color:var(--accent); background:var(--card); }
   .trick-mgr-info{ display:flex; flex-direction:column; gap:2px; min-width:0; }
   .trick-mgr-name{ font-weight:800; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .trick-mgr-meta{ font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; }
@@ -732,7 +733,7 @@
       <span class="badge">STEP 1</span>
     </div>
     <h2 class="title">Choose your game</h2>
-    <p class="subtitle">Four ways to play FLIP.</p>
+    <p class="subtitle">Five ways to play FLIP.</p>
     <button class="btn" onclick="setGameType('flip')">🔤 Game of FLIP
       <span class="desc">Miss a trick your opponent landed and take a letter. Spell FLIP and you're out.</span>
     </button>
@@ -744,6 +745,9 @@
     </button>
     <button class="btn" onclick="setGameType('tournament')">🏆 Tournament
       <span class="desc">4 or 8 players, single elimination. Win your match to advance.</span>
+    </button>
+    <button class="btn" onclick="setGameType('customlist')">📋 Custom List
+      <span class="desc">Play FLIP-style, but only with a list of tricks you've built yourself.</span>
     </button>
   </div>
 
@@ -884,6 +888,9 @@
     <p class="subtitle">Pick where you're flipping today.</p>
     <button class="btn" onclick="setCategory('ground')">🤸 Ground</button>
     <button class="btn" onclick="setCategory('trampoline')">🔵 Trampoline</button>
+    <button class="btn btn-outline" onclick="openCustomListPicker('run', state.gameType === 'tournament' ? 'screen-bracket-setup' : 'screen-mode')">📋 Use a Custom List
+      <span class="desc">Skip category and difficulty entirely — draw only from one of your saved lists.</span>
+    </button>
   </div>
 
   <!-- DIFFICULTY -->
@@ -1036,7 +1043,7 @@
   <!-- PLAYERS (multiplayer only) -->
   <div class="screen" id="screen-players">
     <div class="top-nav">
-      <button class="back" onclick="go(state.gameType === 'timeattack' ? 'screen-timelimit' : (state.gameType === 'addon' ? 'screen-addon-filters' : 'screen-difficulty'))">← Back</button>
+      <button class="back" onclick="go(state.usingCustomList ? 'screen-custom-lists' : (state.gameType === 'timeattack' ? 'screen-timelimit' : (state.gameType === 'addon' ? 'screen-addon-filters' : 'screen-difficulty')))">← Back</button>
       <span class="badge">STEP</span>
     </div>
     <h2 class="title">Who's playing?</h2>
@@ -1453,27 +1460,34 @@
 
     <div class="section-label">Quick-add from official list</div>
     <div class="quick-add-chip-row">
-      <div class="quick-add-chip" onclick="quickAddCategory('ground')">Ground Tricks</div>
-      <div class="quick-add-chip" onclick="quickAddCategory('trampoline')">Trampoline Tricks</div>
-      <div class="quick-add-chip" onclick="quickAddCategory('wall')">Wall Tricks</div>
-      <div class="quick-add-chip" onclick="quickAddCategory('vault')">Vaults</div>
+      <div class="quick-add-chip" onclick="quickAddTarget='customtrick'; quickAddCategory('ground')">Ground Tricks</div>
+      <div class="quick-add-chip" onclick="quickAddTarget='customtrick'; quickAddCategory('trampoline')">Trampoline Tricks</div>
+      <div class="quick-add-chip" onclick="quickAddTarget='customtrick'; quickAddCategory('wall')">Wall Tricks</div>
+      <div class="quick-add-chip" onclick="quickAddTarget='customtrick'; quickAddCategory('vault')">Vaults</div>
+      <div class="quick-add-chip" onclick="quickAddTarget='customtrick'; quickAddCategory('all')">All Tricks</div>
     </div>
 
     <button class="btn btn-outline" style="margin-bottom:14px;" onclick="openTrickEditor(null)">+ Create Custom Trick</button>
+    <button class="btn btn-outline" style="margin-bottom:14px;" onclick="openCustomListPicker('manage', 'screen-manage-tricks')">📋 Manage Custom Lists</button>
 
     <div id="trick-mgr-list"></div>
     <div class="placeholder-note" id="trick-mgr-empty-note" style="display:none;">No tricks match.</div>
     <div class="spacer"></div>
   </div>
 
-  <!-- QUICK-ADD PICKER (category browse -> tap to clone into custom list) -->
+  <!-- QUICK-ADD / BROWSE-ALL PICKER (category browse -> tap to add,
+       either cloning into your custom trick database, or straight into
+       the custom list you're building — see quickAddTarget) -->
   <div class="screen" id="screen-quickadd-picker">
     <div class="top-nav">
-      <button class="back" onclick="go('screen-manage-tricks')">← Back</button>
+      <button class="back" onclick="go(quickAddReturnTo)">← Back</button>
       <span class="badge" id="quickadd-picker-badge">QUICK ADD</span>
     </div>
     <h2 class="title" id="quickadd-picker-title">Tricks</h2>
-    <p class="subtitle">Tap one to add it to your custom list, then edit it if you want.</p>
+    <p class="subtitle" id="quickadd-picker-subtitle">Tap one to add it to your custom list, then edit it if you want.</p>
+    <div class="field">
+      <input type="text" id="quickadd-picker-search" placeholder="Search this list…" oninput="filterQuickAddPickerList()">
+    </div>
     <div id="quickadd-picker-list"></div>
     <div class="spacer"></div>
   </div>
@@ -1548,6 +1562,70 @@
     <div class="row" id="trick-editor-existing-actions" style="display:none; gap:10px;">
       <button class="btn-outline" style="width:100%;" onclick="duplicateFromEditor()">Duplicate</button>
       <button class="btn-outline" style="width:100%; border-color:var(--danger); color:var(--danger);" onclick="deleteFromEditor()">Delete</button>
+    </div>
+  </div>
+
+  <!-- CUSTOM LISTS: saved named collections of tricks that play as their
+       own game mode (Custom List, from screen-gametype) or as the trick
+       source for Game of FLIP/Time Attack/Tournament (via the "Use a
+       Custom List" button on screen-category) instead of Ground/Trampoline
+       + difficulty. Reused for both picking-a-list-to-play (context
+       'run') and pure management (context 'manage', from Manage Tricks). -->
+  <div class="screen" id="screen-custom-lists">
+    <div class="top-nav">
+      <button class="back" onclick="go(customListReturnTo)">← Back</button>
+      <span class="badge">CUSTOM LISTS</span>
+    </div>
+    <h2 class="title">Your Custom Lists</h2>
+    <p class="subtitle" id="custom-lists-subtitle">Pick a saved list to play with, or create a new one.</p>
+
+    <button class="btn btn-outline" style="margin-bottom:14px;" onclick="openCustomListEditor(null)">+ New List</button>
+
+    <div id="custom-lists-wrap"></div>
+    <div class="placeholder-note" id="custom-lists-empty-note" style="display:none;">No custom lists yet — tap "+ New List" to build one from the big trick database, your own custom tricks, or names you make up on the spot.</div>
+    <div class="spacer"></div>
+  </div>
+
+  <!-- CUSTOM LIST EDITOR (create / edit a named list of tricks) -->
+  <div class="screen" id="screen-custom-list-editor">
+    <div class="top-nav">
+      <button class="back" onclick="go('screen-custom-lists')">← Back</button>
+      <span class="badge" id="cl-editor-badge">NEW LIST</span>
+    </div>
+    <h2 class="title" id="cl-editor-title">New List</h2>
+
+    <div class="field">
+      <input type="text" id="cl-editor-name" placeholder="List name (e.g. Warmup Set)" maxlength="40">
+    </div>
+
+    <div class="section-label">Browse &amp; tap to add</div>
+    <p class="subtitle" style="margin-top:-4px;">View every trick in a category and tap the ones you want — no typing required. Tap "All Tricks" to see everything at once.</p>
+    <div class="quick-add-chip-row">
+      <div class="quick-add-chip" onclick="quickAddTarget='listdraft'; quickAddCategory('ground')">Ground Tricks</div>
+      <div class="quick-add-chip" onclick="quickAddTarget='listdraft'; quickAddCategory('trampoline')">Trampoline Tricks</div>
+      <div class="quick-add-chip" onclick="quickAddTarget='listdraft'; quickAddCategory('wall')">Wall Tricks</div>
+      <div class="quick-add-chip" onclick="quickAddTarget='listdraft'; quickAddCategory('vault')">Vaults</div>
+      <div class="quick-add-chip" onclick="quickAddTarget='listdraft'; quickAddCategory('all')">All Tricks</div>
+      <div class="quick-add-chip" onclick="quickAddTarget='listdraft'; quickAddCategory('customtricks')">My Custom Tricks</div>
+    </div>
+
+    <div class="section-label">Or search / type your own</div>
+    <p class="subtitle" style="margin-top:-4px;">Search the big trick database (and your own custom tricks) below, or just type any name of your own and tap Add — it doesn't have to exist anywhere else.</p>
+    <div class="field autocomplete-wrap">
+      <input type="text" id="cl-editor-trick-input" placeholder="Search or type a trick name…" maxlength="60" autocomplete="off"
+        oninput="renderCustomListTrickAutocomplete()" onfocus="renderCustomListTrickAutocomplete()">
+      <div class="autocomplete-list" id="cl-editor-autocomplete" style="display:none;"></div>
+    </div>
+    <button class="btn btn-outline" style="margin-bottom:14px;" onclick="addTypedTrickToListDraft()">+ Add typed name</button>
+
+    <div class="section-label" id="cl-editor-count">0 tricks in this list</div>
+    <div id="cl-editor-trick-list"></div>
+
+    <div class="spacer"></div>
+    <button class="btn btn-primary" onclick="saveCustomListEditor()">Save List</button>
+    <div class="row" id="cl-editor-existing-actions" style="display:none; gap:10px;">
+      <button class="btn-outline" style="width:100%;" onclick="duplicateFromListEditor()">Duplicate</button>
+      <button class="btn-outline" style="width:100%; border-color:var(--danger); color:var(--danger);" onclick="deleteFromListEditor()">Delete</button>
     </div>
   </div>
 
@@ -2424,30 +2502,104 @@ function renderTrickManagerList(){
   }).join('');
 }
 
-/* Quick-add: browse official tricks by category, tap one to clone it
-   into the custom list (pre-filled, ready to rename/edit). */
-const QUICKADD_CATEGORY_LABELS = { ground: 'Ground Tricks', trampoline: 'Trampoline Tricks', wall: 'Wall Tricks', vault: 'Vaults' };
+/* Quick-add / browse-all: view every trick in a category (or literally
+   everything) and tap to add it, instead of typing each one. Serves two
+   targets from the same picker screen:
+   'customtrick' — tap clones the official trick into your custom trick
+                   database (pre-filled, ready to rename/edit) — the
+                   original Manage Tricks behavior.
+   'listdraft'   — tap adds/removes the trick directly to/from the
+                   custom list you're currently building, with a
+                   "✓ Added" state so you can see at a glance what's
+                   already in — no editor screen, no typing required. */
+const QUICKADD_CATEGORY_LABELS = {
+  ground: 'Ground Tricks',
+  trampoline: 'Trampoline Tricks',
+  wall: 'Wall Tricks',
+  vault: 'Vaults',
+  all: 'All Tricks',
+  customtricks: 'My Custom Tricks'
+};
+let quickAddTarget = 'customtrick';   // 'customtrick' | 'listdraft'
+let quickAddReturnTo = 'screen-manage-tricks';
+let quickAddActiveCat = 'ground';
+let quickAddAllNames = [];
+let quickAddRenderedNames = [];
+
 function quickAddCategory(cat){
+  quickAddActiveCat = cat;
+  quickAddReturnTo = quickAddTarget === 'listdraft' ? 'screen-custom-list-editor' : 'screen-manage-tricks';
   document.getElementById('quickadd-picker-title').textContent = QUICKADD_CATEGORY_LABELS[cat] || 'Tricks';
   document.getElementById('quickadd-picker-badge').textContent = 'QUICK ADD';
+  const sub = document.getElementById('quickadd-picker-subtitle');
+  if(sub){
+    sub.textContent = quickAddTarget === 'listdraft'
+      ? 'Tap any trick to add it straight to your list. Tap again to remove it.'
+      : 'Tap one to add it to your custom list, then edit it if you want.';
+  }
   let names;
   if(cat === 'wall') names = allOfficialTrickEntries().filter(e => isWallTrick(e.name)).map(e => e.name);
   else if(cat === 'vault') names = allOfficialTrickEntries().filter(e => isVaultTrick(e.name)).map(e => e.name);
+  else if(cat === 'all') names = allOfficialTrickEntries().map(e => e.name);
+  else if(cat === 'customtricks') names = customTricks.filter(t => t.enabled !== false).map(t => t.name);
   else names = allOfficialTrickEntries().filter(e => e.category === cat).map(e => e.name);
-  names = [...new Set(names)].sort();
-  const wrap = document.getElementById('quickadd-picker-list');
-  wrap.innerHTML = names.map(n => `<div class="trick-mgr-row" style="cursor:pointer;" onclick='quickAddTrick(${JSON.stringify(n)}, ${JSON.stringify(cat)})'>
-    <div class="trick-mgr-info"><div class="trick-mgr-name">${n}</div></div>
-    <div class="trick-mgr-actions">+ Add</div>
-  </div>`).join('');
+  quickAddAllNames = [...new Set(names)].sort();
+  const search = document.getElementById('quickadd-picker-search');
+  if(search) search.value = '';
+  renderQuickAddPickerList(quickAddAllNames);
   go('screen-quickadd-picker');
+}
+function filterQuickAddPickerList(){
+  const q = (document.getElementById('quickadd-picker-search').value || '').trim().toLowerCase();
+  renderQuickAddPickerList(q ? quickAddAllNames.filter(n => n.toLowerCase().includes(q)) : quickAddAllNames);
+}
+function renderQuickAddPickerList(names){
+  quickAddRenderedNames = names;
+  const wrap = document.getElementById('quickadd-picker-list');
+  if(!wrap) return;
+  if(!names.length){
+    wrap.innerHTML = '<div class="placeholder-note">No tricks match.</div>';
+    return;
+  }
+  if(quickAddTarget === 'listdraft'){
+    wrap.innerHTML = names.map((n, i) => {
+      const added = !!(customListDraft && customListDraft.tricks.some(t => t.toLowerCase() === n.toLowerCase()));
+      return `<div class="trick-mgr-row${added ? ' added' : ''}" style="cursor:pointer;" onclick="toggleQuickAddListDraftByIndex(${i})">
+        <div class="trick-mgr-info"><div class="trick-mgr-name">${escapeHtml(n)}</div></div>
+        <div class="trick-mgr-actions">${added ? '✓ Added' : '+ Add'}</div>
+      </div>`;
+    }).join('');
+  } else {
+    wrap.innerHTML = names.map((n, i) => `<div class="trick-mgr-row" style="cursor:pointer;" onclick="quickAddTrickByIndex(${i})">
+      <div class="trick-mgr-info"><div class="trick-mgr-name">${escapeHtml(n)}</div></div>
+      <div class="trick-mgr-actions">+ Add</div>
+    </div>`).join('');
+  }
+}
+function toggleQuickAddListDraftByIndex(i){
+  const name = quickAddRenderedNames[i];
+  if(!name || !customListDraft) return;
+  const idx = customListDraft.tricks.findIndex(t => t.toLowerCase() === name.toLowerCase());
+  if(idx >= 0){
+    customListDraft.tricks.splice(idx, 1);
+    showToast('Removed from list');
+  } else {
+    customListDraft.tricks.push(name);
+    showToast('Added to list');
+  }
+  renderCustomListDraftTricks();
+  renderQuickAddPickerList(quickAddRenderedNames);
+}
+function quickAddTrickByIndex(i){
+  const name = quickAddRenderedNames[i];
+  if(name) quickAddTrick(name, quickAddActiveCat);
 }
 function quickAddTrick(name, quickAddCat){
   const officialCat = quickAddCat === 'wall' || quickAddCat === 'vault' ? 'other' : quickAddCat;
   const trick = {
     id: nextCustomTrickId(),
     name: name,
-    category: officialCat,
+    category: officialCat === 'all' || officialCat === 'customtricks' ? 'other' : officialCat,
     difficulty: 'novice',
     type: quickAddCat === 'vault' ? 'vault' : (quickAddCat === 'wall' ? 'other' : 'flip'),
     notes: '',
@@ -2544,6 +2696,239 @@ function deleteFromEditor(){
   showToast('Trick deleted');
   go('screen-manage-tricks');
   renderTrickManagerList();
+}
+
+/* ============================================================
+   CUSTOM TRICK LISTS: named, saved collections of tricks — built by
+   picking from the official database, from your own custom tricks, or
+   by typing completely made-up names — that play as their OWN game
+   mode (the "Custom List" option on screen-gametype) or as a drop-in
+   trick source for Game of FLIP/Time Attack/Tournament (the "Use a
+   Custom List" button on screen-category, replacing category+
+   difficulty entirely). Unlike individual custom tricks (which quietly
+   merge into the shared filtered pools everywhere), a custom list is a
+   fixed, hand-picked set — no filters, no difficulty, no combo
+   generation layered on top. What you put in the list is exactly what
+   gets drawn.
+   ============================================================ */
+function escapeHtml(str){
+  return String(str).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+}
+function nextCustomTrickListId(){
+  let n = 1;
+  while(customTrickLists.some(l => l.id === 'list_' + n)) n++;
+  return 'list_' + n;
+}
+function loadCustomTrickLists(){
+  try{
+    const raw = localStorage.getItem('flipCustomTrickLists');
+    if(raw){
+      const parsed = JSON.parse(raw);
+      if(Array.isArray(parsed)) return parsed;
+    }
+  }catch(e){ /* storage unavailable, use defaults */ }
+  return [];
+}
+function saveCustomTrickLists(){
+  try{ localStorage.setItem('flipCustomTrickLists', JSON.stringify(customTrickLists)); }catch(e){ /* ignore */ }
+}
+let customTrickLists = loadCustomTrickLists();
+function getCustomTrickListById(id){ return customTrickLists.find(l => l.id === id) || null; }
+function addOrUpdateCustomTrickList(list){
+  const idx = customTrickLists.findIndex(l => l.id === list.id);
+  if(idx >= 0) customTrickLists[idx] = list; else customTrickLists.push(list);
+  saveCustomTrickLists();
+}
+function deleteCustomTrickListById(id){
+  customTrickLists = customTrickLists.filter(l => l.id !== id);
+  saveCustomTrickLists();
+  if(state.activeCustomListId === id){
+    state.activeCustomListId = null;
+    state.usingCustomList = false;
+  }
+}
+function duplicateCustomTrickListById(id){
+  const orig = getCustomTrickListById(id);
+  if(!orig) return null;
+  const copy = { id: nextCustomTrickListId(), name: orig.name + ' (copy)', tricks: orig.tricks.slice() };
+  customTrickLists.push(copy);
+  saveCustomTrickLists();
+  return copy;
+}
+
+/* ------------------------------------------------------------
+   Picker/manager screen — reused for two contexts:
+   'run'    reached mid-flow (from screen-mode for the standalone Custom
+            List game type, or from screen-category's "Use a Custom
+            List" button). Tapping a list's Play button selects it and
+            continues the game flow right where category/difficulty
+            would have.
+   'manage' reached from the Manage Tricks screen, purely for building
+            and organizing lists — no Play button shown.
+   ------------------------------------------------------------ */
+let customListContext = 'run';
+let customListReturnTo = 'screen-title';
+function openCustomListPicker(context, returnTo){
+  customListContext = context;
+  customListReturnTo = returnTo || 'screen-title';
+  renderCustomListsScreen();
+  go('screen-custom-lists');
+}
+function renderCustomListsScreen(){
+  const wrap = document.getElementById('custom-lists-wrap');
+  const emptyNote = document.getElementById('custom-lists-empty-note');
+  const subtitle = document.getElementById('custom-lists-subtitle');
+  if(subtitle){
+    subtitle.textContent = customListContext === 'run'
+      ? 'Pick a saved list to play with, or create a new one.'
+      : 'Create, edit, and organize your saved trick lists.';
+  }
+  if(!wrap) return;
+  if(!customTrickLists.length){
+    wrap.innerHTML = '';
+    if(emptyNote) emptyNote.style.display = 'block';
+    return;
+  }
+  if(emptyNote) emptyNote.style.display = 'none';
+  const sorted = customTrickLists.slice().sort((a, b) => a.name.localeCompare(b.name));
+  wrap.innerHTML = sorted.map(l => {
+    const playBtn = customListContext === 'run'
+      ? `<button class="btn-outline" style="width:auto; padding:8px 12px; border-radius:10px; font-size:13px; white-space:nowrap;" onclick="selectCustomListForRun('${l.id}')">▶ Play</button>`
+      : '';
+    return `<div class="trick-mgr-row">
+      <div class="trick-mgr-info">
+        <div class="trick-mgr-name">${escapeHtml(l.name)}</div>
+        <div class="trick-mgr-meta">${l.tricks.length} trick${l.tricks.length === 1 ? '' : 's'}</div>
+      </div>
+      <div class="trick-mgr-actions">
+        ${playBtn}
+        <button class="trick-mgr-icon-btn" title="Edit" onclick="openCustomListEditor('${l.id}')">✎</button>
+        <button class="trick-mgr-icon-btn" title="Duplicate" onclick="duplicateCustomTrickListById('${l.id}'); renderCustomListsScreen();">⧉</button>
+        <button class="trick-mgr-icon-btn" title="Delete" onclick="deleteCustomTrickListById('${l.id}'); renderCustomListsScreen();">🗑</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+function selectCustomListForRun(id){
+  const list = getCustomTrickListById(id);
+  if(!list || !list.tricks.length){
+    showToast('That list has no tricks yet — edit it to add some first.');
+    return;
+  }
+  state.activeCustomListId = id;
+  state.usingCustomList = true;
+  state.category = null;
+  state.difficulty = null;
+  if(state.gameType === 'tournament'){ beginBracketTournament(); return; }
+  if(state.gameType === 'timeattack'){ go('screen-timelimit'); return; }
+  goToPlayersOrStart();
+}
+
+/* ------------------------------------------------------------
+   List editor — create or edit one named list's tricks.
+   ------------------------------------------------------------ */
+let customListDraft = null;
+let clAutocompleteMatches = [];
+function blankCustomListDraft(){ return { id: null, name: '', tricks: [] }; }
+function openCustomListEditor(id){
+  if(id){
+    const existing = getCustomTrickListById(id);
+    customListDraft = existing ? { id: existing.id, name: existing.name, tricks: existing.tricks.slice() } : blankCustomListDraft();
+  } else {
+    customListDraft = blankCustomListDraft();
+  }
+  document.getElementById('cl-editor-title').textContent = id ? 'Edit List' : 'New List';
+  document.getElementById('cl-editor-badge').textContent = id ? 'EDIT LIST' : 'NEW LIST';
+  document.getElementById('cl-editor-name').value = customListDraft.name;
+  const input = document.getElementById('cl-editor-trick-input');
+  if(input) input.value = '';
+  document.getElementById('cl-editor-autocomplete').style.display = 'none';
+  document.getElementById('cl-editor-existing-actions').style.display = id ? 'flex' : 'none';
+  renderCustomListDraftTricks();
+  go('screen-custom-list-editor');
+}
+function renderCustomListTrickAutocomplete(){
+  const input = document.getElementById('cl-editor-trick-input');
+  const q = input.value.trim().toLowerCase();
+  const list = document.getElementById('cl-editor-autocomplete');
+  if(!q){ list.style.display = 'none'; clAutocompleteMatches = []; return; }
+  const seen = new Set();
+  const officialMatches = allOfficialTrickEntries()
+    .filter(e => e.name.toLowerCase().startsWith(q))
+    .filter(e => !seen.has(e.name) && seen.add(e.name));
+  const customMatches = customTricks
+    .filter(t => t.enabled !== false && t.name.toLowerCase().startsWith(q))
+    .filter(t => !seen.has(t.name) && seen.add(t.name))
+    .map(t => ({ name: t.name, category: t.category, difficulty: t.difficulty, official: false }));
+  clAutocompleteMatches = officialMatches.concat(customMatches).slice(0, 8);
+  if(!clAutocompleteMatches.length){ list.style.display = 'none'; return; }
+  list.innerHTML = clAutocompleteMatches.map((m, i) => `<div class="autocomplete-item" onclick="addNameToListDraftByIndex(${i})">
+    ${escapeHtml(m.name)}<div class="ai-meta">${escapeHtml([m.category, m.difficulty].filter(Boolean).join(' · ') || (m.official === false ? 'custom' : ''))}</div>
+  </div>`).join('');
+  list.style.display = 'block';
+}
+function addNameToListDraftByIndex(i){
+  const m = clAutocompleteMatches[i];
+  if(m) addNameToListDraft(m.name);
+}
+function addNameToListDraft(name){
+  name = (name || '').trim();
+  if(!name) return;
+  if(customListDraft.tricks.some(t => t.toLowerCase() === name.toLowerCase())){
+    showToast('Already in this list');
+  } else {
+    customListDraft.tricks.push(name);
+    renderCustomListDraftTricks();
+  }
+  const input = document.getElementById('cl-editor-trick-input');
+  if(input){ input.value = ''; input.focus(); }
+  document.getElementById('cl-editor-autocomplete').style.display = 'none';
+}
+function addTypedTrickToListDraft(){
+  const input = document.getElementById('cl-editor-trick-input');
+  addNameToListDraft(input.value);
+}
+function removeTrickFromListDraft(idx){
+  customListDraft.tricks.splice(idx, 1);
+  renderCustomListDraftTricks();
+}
+function renderCustomListDraftTricks(){
+  const wrap = document.getElementById('cl-editor-trick-list');
+  const count = document.getElementById('cl-editor-count');
+  if(count) count.textContent = `${customListDraft.tricks.length} trick${customListDraft.tricks.length === 1 ? '' : 's'} in this list`;
+  if(!wrap) return;
+  if(!customListDraft.tricks.length){
+    wrap.innerHTML = '<div class="placeholder-note">No tricks added yet — search above or type your own name and tap Add.</div>';
+    return;
+  }
+  wrap.innerHTML = customListDraft.tricks.map((name, i) => `<div class="trick-mgr-row">
+    <div class="trick-mgr-info"><div class="trick-mgr-name">${escapeHtml(name)}</div></div>
+    <div class="trick-mgr-actions">
+      <button class="trick-mgr-icon-btn" title="Remove" onclick="removeTrickFromListDraft(${i})">✕</button>
+    </div>
+  </div>`).join('');
+}
+function saveCustomListEditor(){
+  const name = (document.getElementById('cl-editor-name').value || '').trim();
+  if(!name){ showToast('Give the list a name first'); return; }
+  if(!customListDraft.tricks.length){ showToast('Add at least one trick first'); return; }
+  if(!customListDraft.id) customListDraft.id = nextCustomTrickListId();
+  addOrUpdateCustomTrickList({ id: customListDraft.id, name, tricks: customListDraft.tricks.slice() });
+  showToast('List saved');
+  renderCustomListsScreen();
+  go('screen-custom-lists');
+}
+function duplicateFromListEditor(){
+  if(!customListDraft.id){ showToast('Save it first'); return; }
+  const copy = duplicateCustomTrickListById(customListDraft.id);
+  if(copy) openCustomListEditor(copy.id);
+}
+function deleteFromListEditor(){
+  if(!customListDraft.id) return;
+  deleteCustomTrickListById(customListDraft.id);
+  showToast('List deleted');
+  renderCustomListsScreen();
+  go('screen-custom-lists');
 }
 
 /* ============================================================
@@ -3223,8 +3608,7 @@ function resumeGame(){
     showAddonRound();
     go('screen-addon-game');
   } else if(state.gameType === 'timeattack'){
-    document.getElementById('ta-game-badge').textContent =
-      `${state.category.toUpperCase()} · ${state.difficulty.toUpperCase()}`;
+    document.getElementById('ta-game-badge').textContent = sourceLabelUpper();
     renderTAPlayers();
     const idx = state.mode === 'solo' ? 0 : state.taOrder[state.taTurnIndex];
     const name = state.players[idx].name === 'You' ? 'Your' : `${state.players[idx].name}'s`;
@@ -3235,10 +3619,9 @@ function resumeGame(){
     showTAState('ready');
     go('screen-timeattack-game');
   } else {
-    document.getElementById('game-badge').textContent =
-      `${state.category.toUpperCase()} · ${state.difficulty.toUpperCase()}`;
+    document.getElementById('game-badge').textContent = sourceLabelUpper();
     document.getElementById('trick-name').textContent = state.currentTrick || '—';
-    document.getElementById('trick-meta').textContent = `${state.category} · ${state.difficulty}`;
+    document.getElementById('trick-meta').textContent = sourceLabelPlain();
     if(state.mode === 'solo'){
       document.getElementById('attempt-controls').style.display = '';
       document.getElementById('attempt-name').textContent = state.players[0].name;
@@ -3421,10 +3804,16 @@ function launchConfetti(){
 }
 
 let state = {
-  gameType: null,      // 'flip' | 'addon' | 'timeattack'
+  gameType: null,      // 'flip' | 'addon' | 'timeattack' | 'tournament' | 'customlist'
   mode: null,          // 'solo' | 'multi'
   category: null,      // 'ground' | 'trampoline'
   difficulty: null,    // 'novice' | 'beginner' | 'intermediate' | 'advanced'
+  // Custom List mode/embedding: when usingCustomList is true, every trick
+  // draw (drawTrick/bracketDrawTrick) pulls from the named list instead of
+  // category+difficulty — set either by choosing the standalone "Custom
+  // List" game type, or tapping "Use a Custom List" on screen-category.
+  usingCustomList: false,
+  activeCustomListId: null,
   players: [],         // [{name, letters:0, out:false, landedCount:0}]
   roundStartIndex: 0,  // which player's turn starts this round's rotation (multiplayer FLIP)
   attemptQueue: [],    // indices of players still to attempt current trick
@@ -3459,7 +3848,12 @@ function totalFlowSteps(){
     if(state.mode === 'multi') total += 1; // players screen
     return total;
   }
-  let total = 4; // game type, mode, category, difficulty
+  if(state.gameType === 'customlist'){
+    let total = 3; // game type, mode, custom list picker (no category/difficulty)
+    if(state.mode === 'multi') total += 1; // players screen
+    return total;
+  }
+  let total = 4; // game type, mode, category, difficulty (or custom list picker in its place)
   if(state.gameType === 'timeattack') total += 1; // time limit screen
   if(state.mode === 'multi') total += 1;          // players screen
   return total;
@@ -3487,11 +3881,21 @@ function go(id){
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   if(id === 'screen-title'){ updateHomeStats(); updateStreakUI(); }
+  if(id === 'screen-category'){
+    // Landing on screen-category (Ground/Trampoline picker, shared by
+    // FLIP/Time Attack/Tournament) always means the normal category+
+    // difficulty path is back in play — clear any stale Custom List
+    // selection from a previous run. The "Use a Custom List" button on
+    // this same screen sets it right back to true if tapped.
+    state.usingCustomList = false;
+    state.activeCustomListId = null;
+  }
   if(id === 'screen-difficulty') updateDifficultyFilterUI();
   if(id === 'screen-addon-filters') updateAddonFilterUI();
   if(id === 'screen-quicktrick') updateQtFilterUI();
   if(id === 'screen-manage-tricks') renderTrickManagerList();
   if(id === 'screen-combo-settings') updateComboSettingsUI();
+  if(id === 'screen-custom-lists') renderCustomListsScreen();
   updateStepBadge(id);
 }
 
@@ -3802,7 +4206,17 @@ function setMode(mode){
   if(state.gameType === 'addon'){
     state.category = null;
     state.difficulty = null;
+    // Add-On never uses a custom list — clear any stale flag left over
+    // from a previous Custom List run so drawTrick() doesn't pull from it.
+    state.usingCustomList = false;
+    state.activeCustomListId = null;
     go('screen-addon-filters');
+    return;
+  }
+  if(state.gameType === 'customlist'){
+    state.category = null;
+    state.difficulty = null;
+    openCustomListPicker('run', 'screen-mode');
     return;
   }
   go('screen-category');
@@ -3893,8 +4307,7 @@ function startGame(){
 function beginGame(){
   state.usedTricks = [];
   state.currentTrick = null;
-  document.getElementById('game-badge').textContent =
-    `${state.category.toUpperCase()} · ${state.difficulty.toUpperCase()}`;
+  document.getElementById('game-badge').textContent = sourceLabelUpper();
   document.getElementById('attempt-controls').style.display = 'none';
   go('screen-game');
 
@@ -3914,15 +4327,43 @@ function activePlayers(){
   return state.players.filter(p => !p.out);
 }
 
+// Label helpers for the game/turn header — read from the chosen custom
+// list's name when Custom List mode/embedding is active, otherwise the
+// usual category · difficulty text.
+function sourceLabelPlain(){
+  if(state.usingCustomList && state.activeCustomListId){
+    const cl = getCustomTrickListById(state.activeCustomListId);
+    return cl ? cl.name : 'Custom List';
+  }
+  return `${state.category} · ${state.difficulty}`;
+}
+function sourceLabelUpper(){
+  if(state.usingCustomList && state.activeCustomListId){
+    const cl = getCustomTrickListById(state.activeCustomListId);
+    return cl ? cl.name.toUpperCase() : 'CUSTOM LIST';
+  }
+  return `${(state.category || '').toUpperCase()} · ${(state.difficulty || '').toUpperCase()}`;
+}
+
 function drawTrick(){
-  let list = state.gameType === 'addon' ? filteredAddonTricks() : filteredTrickList(state.category, state.difficulty);
+  let list;
+  if(state.usingCustomList && state.activeCustomListId){
+    const cl = getCustomTrickListById(state.activeCustomListId);
+    list = cl ? cl.tricks.slice() : [];
+  } else {
+    list = state.gameType === 'addon' ? filteredAddonTricks() : filteredTrickList(state.category, state.difficulty);
+  }
   if(!list.length){
     // Safety net: filters should never be able to empty a pool mid-game
-    // (setDifficulty/continueAddonSetup already check before the game
-    // starts), but if something changes out from under an in-progress
-    // game, fall back to the unfiltered list rather than ever drawing
-    // "undefined".
-    list = state.gameType === 'addon' ? ADDON_TRICKS : ((TRICKS[state.category] && TRICKS[state.category][state.difficulty]) || []);
+    // (setDifficulty/continueAddonSetup/selectCustomListForRun already
+    // check before the game starts), but if something changes out from
+    // under an in-progress game, fall back to the unfiltered list rather
+    // than ever drawing "undefined". A custom list has no unfiltered
+    // fallback beyond itself — if it's genuinely empty there's nothing
+    // to fall back to.
+    list = state.usingCustomList
+      ? []
+      : (state.gameType === 'addon' ? ADDON_TRICKS : ((TRICKS[state.category] && TRICKS[state.category][state.difficulty]) || []));
   }
   let pool = list.filter(t => !state.usedTricks.includes(t));
   if(pool.length === 0){ pool = list; state.usedTricks = []; }
@@ -3944,7 +4385,7 @@ function newTrick(){
   const trick = drawTrick();
   state.currentTrick = trick;
   setTrickDisplay(document.getElementById('trick-name'), trick);
-  document.getElementById('trick-meta').textContent = `${state.category} · ${state.difficulty}`;
+  document.getElementById('trick-meta').textContent = sourceLabelPlain();
 }
 
 function startRound(){
@@ -4276,8 +4717,7 @@ function endAddonSoloGame(){
    across all turns wins (ties share the win).
    ============================================================ */
 function beginTimeAttackGame(){
-  document.getElementById('ta-game-badge').textContent =
-    `${state.category.toUpperCase()} · ${state.difficulty.toUpperCase()}`;
+  document.getElementById('ta-game-badge').textContent = sourceLabelUpper();
   state.taResults = [];
   if(state.mode === 'multi'){
     state.taOrder = state.players.map((_, i) => i);
@@ -4351,7 +4791,7 @@ function taNextTrick(){
   const trick = drawTrick();
   state.currentTrick = trick;
   setTrickDisplay(document.getElementById('ta-trick-name'), trick);
-  document.getElementById('ta-trick-meta').textContent = `${state.category} · ${state.difficulty}`;
+  document.getElementById('ta-trick-meta').textContent = sourceLabelPlain();
 }
 
 function taAttempt(landed){
@@ -4528,8 +4968,7 @@ function beginBracketTournament(){
   state.bracket.rounds = [round1];
   state.bracket.roundIndex = 0;
   state.bracket.matchIndex = 0;
-  document.getElementById('bracket-game-badge').textContent =
-    `TOURNAMENT · ${state.category.toUpperCase()} · ${state.difficulty.toUpperCase()}`;
+  document.getElementById('bracket-game-badge').textContent = `TOURNAMENT · ${sourceLabelUpper()}`;
   advanceBracketTournament();
 }
 
@@ -4585,11 +5024,17 @@ function startBracketMatch(){
 
 function bracketDrawTrick(){
   const match = state.bracket.match;
-  let list = filteredTrickList(state.category, state.difficulty);
+  let list;
+  if(state.usingCustomList && state.activeCustomListId){
+    const cl = getCustomTrickListById(state.activeCustomListId);
+    list = cl ? cl.tricks.slice() : [];
+  } else {
+    list = filteredTrickList(state.category, state.difficulty);
+  }
   if(!list.length){
     // Safety net, same reasoning as drawTrick(): filters should never be
     // able to empty a pool mid-match, but never draw "undefined" if they do.
-    list = (TRICKS[state.category] && TRICKS[state.category][state.difficulty]) || [];
+    list = state.usingCustomList ? [] : ((TRICKS[state.category] && TRICKS[state.category][state.difficulty]) || []);
   }
   let pool = list.filter(t => !match.usedTricks.includes(t));
   if(pool.length === 0){ pool = list; match.usedTricks = []; }
@@ -4602,7 +5047,7 @@ function bracketNewTrick(){
   const trick = bracketDrawTrick();
   state.bracket.match.currentTrick = trick;
   setTrickDisplay(document.getElementById('bracket-trick-name'), trick);
-  document.getElementById('bracket-trick-meta').textContent = `${state.category} · ${state.difficulty}`;
+  document.getElementById('bracket-trick-meta').textContent = sourceLabelPlain();
 }
 
 function startBracketRound(){
